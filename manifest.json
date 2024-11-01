@@ -1,7 +1,7 @@
 {
 	"id": "inlineAI",
 	"name": "InlineAI",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"minAppVersion": "0.15.0",
 	"description": "Demonstrates some of the capabilities of the Obsidian API.",
 	"author": "Obsidian",
