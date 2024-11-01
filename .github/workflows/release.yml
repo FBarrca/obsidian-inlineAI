@@ -1,0 +1,57 @@
+name: Build and Release Obsidian Plugin
+
+on:
+  push:
+    tags:
+      - 'v*' # Triggers on any tag that starts with 'v'
+
+env:
+  PLUGIN_NAME: obsidian-inlineAI
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout the repository
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      # 2. Set up Node.js environment with caching
+      - name: Set Up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 'lts/*' # Use the latest LTS version
+          cache: 'npm'
+
+      # 3. Install dependencies and build the project
+      - name: Install and Build
+        run: |
+          npm ci
+          npm run build --if-present
+
+      # 4. Prepare release assets
+      - name: Prepare Release Assets
+        run: |
+          mkdir -p $PLUGIN_NAME
+          cp main.js manifest.json styles.css $PLUGIN_NAME
+          zip -r ${PLUGIN_NAME}.zip $PLUGIN_NAME
+
+      # 5. Retrieve the tag name
+      - name: Get Tag Name
+        id: get_tag
+        run: echo "tag_name=$(git describe --tags --abbrev=0)" >> $GITHUB_OUTPUT
+
+      # 6. Create a new release and upload all assets in one step
+      - name: Create Release and Upload Assets
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.get_tag.outputs.tag_name }}
+          name: Release ${{ steps.get_tag.outputs.tag_name }}
+          files: |
+            ${{ env.PLUGIN_NAME }}.zip
+            main.js
+            manifest.json
+            styles.css
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
