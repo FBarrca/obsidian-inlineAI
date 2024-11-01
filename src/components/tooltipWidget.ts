@@ -144,7 +144,7 @@ export class TooltipWidget {
 		this.loader.style.display = "block";
 
 		try {
-			const response = await callApi(userInput, this.selectedText, (this.app as any).plugins.getPlugin("sample-plugin").settings);
+			const response = await callApi(userInput, this.selectedText, (this.app as any).plugins.getPlugin("inlineAI").settings);
 			this.generatedText = response.generated;
 			this.diff = response.diff;
 
@@ -273,7 +273,7 @@ export class TooltipWidget {
 			const userInput = this.editorView.state.doc.toString();
 			this.promptText = userInput;
 			// Step 5: Call the API to get the new generated text
-			const response = await callApi(this.promptText, this.selectedText, (this.app as any).plugins.getPlugin("sample-plugin").settings);
+			const response = await callApi(this.promptText, this.selectedText, (this.app as any).plugins.getPlugin("inlineAI").settings);
 			this.generatedText = response.generated;
 			this.diff = response.diff;
 
