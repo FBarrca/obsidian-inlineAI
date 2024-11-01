@@ -48,7 +48,7 @@ jobs:
         with:
           tag: ${{ steps.get_tag.outputs.tag_name }}
           name: Release ${{ steps.get_tag.outputs.tag_name }}
-          files: |
+          artifacts: |
             ${{ env.PLUGIN_NAME }}.zip
             main.js
             manifest.json
