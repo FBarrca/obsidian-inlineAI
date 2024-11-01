@@ -25,7 +25,11 @@
 	"dependencies": {
 		"@codemirror/state": "^6.4.1",
 		"@codemirror/view": "^6.34.1",
+		"@langchain/core": "^0.3.16",
+		"@langchain/ollama": "^0.1.1",
+		"@langchain/openai": "^0.3.11",
 		"diff": "^7.0.0",
+		"dotenv": "^16.4.5",
 		"ollama": "^0.5.9"
 	}
 }

@@ -5,14 +5,7 @@ import {
 } from "./modules/tooltipExtension";
 import { EditorView } from "@codemirror/view";
 import { conflictMarkers } from "./modules/diffExtension";
-
-interface MyPluginSettings {
-	mySetting: string;
-}
-
-const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: "default",
-};
+import { MyPluginSettings, DEFAULT_SETTINGS, MyPluginSettingTab } from "./settings";
 
 export default class MyPlugin extends Plugin {
 	settings: MyPluginSettings = DEFAULT_SETTINGS;
@@ -29,11 +22,9 @@ export default class MyPlugin extends Plugin {
 			id: "show-cursor-tooltip",
 			name: "Show Cursor Tooltip",
 			callback: () => {
-				const markdownView =
-					this.app.workspace.getActiveViewOfType(MarkdownView);
+				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
 				if (markdownView) {
 					// Dispatch the effect to show the tooltip
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					((markdownView.editor as any).cm as EditorView).dispatch({
 						effects: showTooltipEffect.of(null),
 					});
@@ -46,6 +37,9 @@ export default class MyPlugin extends Plugin {
 				},
 			],
 		});
+
+		// Add settings tab
+		this.addSettingTab(new MyPluginSettingTab(this.app, this));
 	}
 
 	onunload() {
@@ -53,11 +47,7 @@ export default class MyPlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign(
-			{},
-			DEFAULT_SETTINGS,
-			await this.loadData()
-		);
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
 	}
 
 	async saveSettings() {
