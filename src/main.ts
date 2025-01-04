@@ -2,11 +2,11 @@
 import { Plugin, MarkdownView, App } from "obsidian";
 import { EditorView } from "@codemirror/view";
 import { MyPluginSettings, DEFAULT_SETTINGS, MyPluginSettingTab } from "./settings";
-import { commandEffect, selectionOverlayWidget } from "./modules/WidgetExtension";
+import { commandEffect, FloatingTooltipExtension } from "./modules/WidgetExtension";
 import { ChatApiManager } from "./api";
 import { AIResponseField } from "./modules/AIExtension";
-import { selectionHighlightField, selectionInfoField, setSelectionInfoEffect } from "./modules/SelectionSate";
-import { diffExtension, diffField } from "./modules/diffExtension";
+import { buildSelectionHiglightState, currentSelectionState, setSelectionInfoEffect } from "./modules/SelectionSate";
+import { diffExtension, diffDecorationState } from "./modules/diffExtension";
 
 export default class MyPlugin extends Plugin {
 	settings: MyPluginSettings = DEFAULT_SETTINGS;
@@ -16,10 +16,10 @@ export default class MyPlugin extends Plugin {
 		const chatapi = new ChatApiManager(this.settings, this.app);
 
 		this.registerEditorExtension([
-			selectionOverlayWidget(chatapi),
+			FloatingTooltipExtension(chatapi),
 			AIResponseField,
-			selectionInfoField,
-			selectionHighlightField,
+			currentSelectionState,
+			buildSelectionHiglightState,
 			diffExtension
 
 		]);

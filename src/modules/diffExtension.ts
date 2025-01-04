@@ -15,11 +15,9 @@ import {
 import { diffWords, Change } from "diff";
 
 import { acceptTooltipEffect, dismissTooltipEffect } from "./WidgetExtension";
-import { AIResponseField, setAIResponseEffect } from "./AIExtension";
-import { selectionInfoField } from "./SelectionSate";
+import { AIResponseField as generatedResponseState, setAIResponseEffect as setGeneratedResponseEffect } from "./AIExtension";
+import { currentSelectionState } from "./SelectionSate";
 
-// Configuration for chaff removal
-const MIN_UNCHANGED_LENGTH = 5; // Minimum length of unchanged text to keep
 
 /**
  * Widget to display added or removed content.
@@ -43,8 +41,6 @@ class ChangeContentWidget extends WidgetType {
             "aria-label",
             this.type === 'added' ? "Added content" : "Removed content"
         );
-
-        // Optional: Add tooltip or additional styling here
         return wrapper;
     }
 
@@ -62,8 +58,8 @@ class ChangeContentWidget extends WidgetType {
 function generateDiffView(state: EditorState): DecorationSet {
     try {
         // Retrieve the AI response and the current context text from the state
-        const response = state.field(AIResponseField);
-        const context = state.field(selectionInfoField);
+        const response = state.field(generatedResponseState);
+        const context = state.field(currentSelectionState);
 
         const aiText: string = response?.airesponse ?? "";
         const contextText: string = context?.text ?? "";
@@ -73,8 +69,6 @@ function generateDiffView(state: EditorState): DecorationSet {
             aiResponse: response,
             contextText: context,
         });
-        console.log("AI Response:", response, "Context Text:", context);
-
         const diffResult: Change[] = diffWords(contextText, aiText);
 
         // Initialize RangeSetBuilder for efficient decoration construction
@@ -103,20 +97,9 @@ function generateDiffView(state: EditorState): DecorationSet {
                 );
                 currentPos += length;
             } else {
-                // Unchanged text
-                if (length >= MIN_UNCHANGED_LENGTH) {
-                    // Retain unchanged text if it meets the minimum length
-                    currentPos += length;
-                } else {
-                    // Skip small unchanged text to remove chaff
-                    // Optionally, add a thin separator or annotation if desired
-                    currentPos += length;
-                }
+                currentPos += length;
             }
         });
-
-        // Debugging: Remove or conditionally enable in production
-        console.debug("Diff result:", diffResult);
 
         return builder.finish();
     } catch (error) {
@@ -131,12 +114,11 @@ function generateDiffView(state: EditorState): DecorationSet {
  * @param state - The current editor state.
  * @param view - The EditorView instance.
  */
-function applyDiffChanges(state: EditorState, view: EditorView): void {
+function dispatchAIChanges(state: EditorState, view: EditorView): void {
     try {
-        console.log("Applying diff changes");
         // Grab the AI text and selection info (original context)
-        const response = state.field(AIResponseField);
-        const context = state.field(selectionInfoField);
+        const response = state.field(generatedResponseState);
+        const context = state.field(currentSelectionState);
 
         const aiText: string = response?.airesponse ?? "";
         const selectionFrom = context?.from ?? 0;
@@ -152,16 +134,14 @@ function applyDiffChanges(state: EditorState, view: EditorView): void {
     }
 }
 
-/**
- * Our main diff field that reacts to AI response effects, accept tooltip, etc.
- */
-export const diffField = StateField.define<DecorationSet>({
+
+export const diffDecorationState = StateField.define<DecorationSet>({
     create(): DecorationSet {
         return Decoration.none;
     },
     update(decorations: DecorationSet, tr) {
         // Check if we got the AI response effect
-        if (tr.effects.some(e => e.is(setAIResponseEffect))) {
+        if (tr.effects.some(e => e.is(setGeneratedResponseEffect))) {
             return generateDiffView(tr.state);
         }
 
@@ -188,7 +168,7 @@ const applyDiffPlugin = ViewPlugin.fromClass(class {
                 if (effect.is(acceptTooltipEffect)) {
                     // Apply the diff changes by dispatching the transaction
                     setTimeout(() => {
-                        applyDiffChanges(update.state, update.view);
+                        dispatchAIChanges(update.state, update.view);
                     }, 0);
                 }
             }
@@ -200,6 +180,6 @@ const applyDiffPlugin = ViewPlugin.fromClass(class {
  * Exported extension to be included in the EditorView.
  */
 export const diffExtension = [
-    diffField,
+    diffDecorationState,
     applyDiffPlugin,
 ];

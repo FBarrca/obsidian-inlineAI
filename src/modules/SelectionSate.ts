@@ -21,7 +21,7 @@ export const setSelectionInfoEffect = StateEffect.define<SelectionInfo | null>()
 /**
  * Field that holds the most recently preserved selection info.
  */
-export const selectionInfoField = StateField.define<SelectionInfo | null>({
+export const currentSelectionState = StateField.define<SelectionInfo | null>({
     create() {
         return null;
     },
@@ -48,9 +48,9 @@ const highlightDecoration = Decoration.mark({
 /**
  * StateField that manages the decoration set for highlighting.
  */
-export const selectionHighlightField = StateField.define<DecorationSet>({
+export const buildSelectionHiglightState = StateField.define<DecorationSet>({
     create(state) {
-        const info = state.field(selectionInfoField);
+        const info = state.field(currentSelectionState);
         if (info) {
             return Decoration.set([highlightDecoration.range(info.from, info.to)]);
         }
@@ -58,7 +58,7 @@ export const selectionHighlightField = StateField.define<DecorationSet>({
     },
     update(decos, tr) {
         // Check if selectionInfoField has changed
-        const info = tr.state.field(selectionInfoField);
+        const info = tr.state.field(currentSelectionState);
         if (info) {
             return Decoration.set([highlightDecoration.range(info.from, info.to)]);
         }

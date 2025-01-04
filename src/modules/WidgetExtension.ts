@@ -16,14 +16,14 @@ import {
 import { setIcon } from "obsidian";
 import { ChatApiManager } from "../api";
 
-import { selectionInfoField, SelectionInfo } from "./SelectionSate";
+import { currentSelectionState, SelectionInfo } from "./SelectionSate";
 
 // Some existing exports
 export const commandEffect = StateEffect.define<null>();
 export const dismissTooltipEffect = StateEffect.define<null>();
 export const acceptTooltipEffect = StateEffect.define<null>();
 
-class CursorOverlayWidget extends WidgetType {
+class FloatingWidget extends WidgetType {
     private chatApiManager: ChatApiManager;
     private selectionInfo: SelectionInfo | null;
 
@@ -97,7 +97,6 @@ class CursorOverlayWidget extends WidgetType {
     }
 
     public override destroy(): void {
-        console.log("CursorOverlayWidget destroyed");
         this.textFieldView?.destroy();
         this.innerDom.innerHTML = "";
         this.textFieldView = undefined;
@@ -112,13 +111,6 @@ class CursorOverlayWidget extends WidgetType {
         }
     }
 
-    private acceptChange() {
-        if (this.outerEditorView) {
-            this.outerEditorView.dispatch({
-                effects: acceptTooltipEffect.of(null),
-            });
-        }
-    }
 
     private createPencilIcon() {
         if (!this.innerDom.querySelector(".cm-pencil-icon")) {
@@ -180,7 +172,6 @@ class CursorOverlayWidget extends WidgetType {
      */
     private submitAction() {
         const userPrompt = this.textFieldView?.state.doc.toString() ?? "";
-        console.log("User Input:", userPrompt);
 
         if (!userPrompt.trim()) {
             console.warn("Empty input. Submission aborted.");
@@ -291,31 +282,20 @@ class CursorOverlayWidget extends WidgetType {
      * Confirms the result, applies changes, and closes the tooltip.
      */
     private acceptAction() {
-        console.log("Accept button clicked");
-
-        this.acceptChange();
-        // After applying changes, dismiss the tooltip
+        if (this.outerEditorView) {
+            this.outerEditorView.dispatch({
+                effects: acceptTooltipEffect.of(null),
+            });
+        }
         this.dismissTooltip();
     }
 
-    /**
-     * Handles the Discard action.
-     * Rejects the result and closes the tooltip without applying changes.
-     */
+
     private discardAction() {
-        console.log("Discard button clicked");
-        // Simply dismiss the tooltip without applying any changes
         this.dismissTooltip();
     }
 
-    /**
-     * Handles the Reload action.
-     * Reprocesses the query based on current edits.
-     */
     private reloadAction() {
-        console.log("Reload button clicked");
-        // Optionally, you might want to re-open the input field or re-submit the current prompt.
-        // For this example, we'll transition back to the input stage.
         this.submitAction();
     }
 }
@@ -325,7 +305,7 @@ class CursorOverlayWidget extends WidgetType {
  * Also obtains the entire selection info from the state
  * and passes it to the CursorOverlayWidget constructor.
  */
-function getSelectionOverlayDecorations(
+function renderFloatingWidget(
     state: EditorState,
     chatApiManager: ChatApiManager
 ): DecorationSet {
@@ -334,11 +314,11 @@ function getSelectionOverlayDecorations(
     if (!firstSelectedRange) return Decoration.none;
 
     // Get the entire SelectionInfo (which includes the text)
-    const selectionInfo = state.field(selectionInfoField, false) ?? null;
+    const selectionInfo = state.field(currentSelectionState, false) ?? null;
 
     // Create the widget decoration at the selection start (or end)
     const deco = Decoration.widget({
-        widget: new CursorOverlayWidget(chatApiManager, selectionInfo),
+        widget: new FloatingWidget(chatApiManager, selectionInfo),
         above: true,
         inline: false,
     }).range(firstSelectedRange.from);
@@ -349,15 +329,15 @@ function getSelectionOverlayDecorations(
 /**
  * Defines the selection overlay field with access to ChatApiManager.
  */
-function TooltipFiled(chatApiManager: ChatApiManager) {
+function FloatingTooltipState(chatApiManager: ChatApiManager) {
     return StateField.define<DecorationSet>({
         create(state) {
-            return getSelectionOverlayDecorations(state, chatApiManager);
+            return renderFloatingWidget(state, chatApiManager);
         },
         update(decorations, tr) {
             // Recompute if the user triggers the command
             if (tr.effects.some((e) => e.is(commandEffect))) {
-                return getSelectionOverlayDecorations(tr.state, chatApiManager);
+                return renderFloatingWidget(tr.state, chatApiManager);
             }
             // Or dismiss it
             if (tr.effects.some((e) => e.is(dismissTooltipEffect))) {
@@ -373,6 +353,6 @@ function TooltipFiled(chatApiManager: ChatApiManager) {
 /**
  * Extension enabling selection overlay widgets.
  */
-export function selectionOverlayWidget(chatApiManager: ChatApiManager) {
-    return [TooltipFiled(chatApiManager)];
+export function FloatingTooltipExtension(chatApiManager: ChatApiManager) {
+    return [FloatingTooltipState(chatApiManager)];
 }
