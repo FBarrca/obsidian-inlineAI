@@ -1,29 +1,23 @@
-.cm-cursor-overlay {
-    left: -10px;
-    top: -40px;
-    width: 100%;
-    position: absolute;
-    align-items: center;
-    background: var(--background-secondary) !important;
-    color: var(--text-normal);
-    font-size: var(--font-interface-theme);
-    border: 1px solid var(--background-modifier-border) !important;
-    user-select: none;
+/* Tooltip Styles */
+.cm-tooltip {
     padding: 4px 8px;
+    background: var(--background-secondary) !important;
+    z-index: var(--layer-tooltip);
+    color: var(--text-normal);
     border-radius: 4px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-    z-index: 1000;
-    visibility: visible;
-}
-
-.cm-cursor-overlay-inner {
+    font-size: var(--font-interface-theme);
+    width: 90%;
+    max-width: var(--file-line-width);
+    max-height: 200px;
+    border: 1px solid var(--background-modifier-border) !important;
     display: flex;
     flex-direction: row;
     align-items: center;
-
-    overflow: hidden;
+    @media (min-width: 1024px) {
+        margin-left: 10px;
+    }
+    
 }
-
     
 .cm-tooltip-editor {
     display: flex;
@@ -39,22 +33,6 @@
     margin-left: 8px;
     flex: 1 0 0;
     transition: flex-basis 0.3s ease;
-}
-
-.cm-cursor-overlay .cm-editor {
-    user-select: text;       /* allow text interaction inside the mini-editor */
-  }
-
-
-  /* Button Styles */
-.submit-button {
-    height: var(--line-height);
-}
-
-.tooltip-button {
-    height: 100%;
-    margin-left: 8px;
-    border: 1px solid var(--background-modifier-border-focus);
 }
 
 /* Loader Animation */
@@ -79,25 +57,47 @@
     }
 }
 
-
-.cm-change-widget {
-    font-size: 0.9em;
-    margin-left: 4px;
-    color: #555;
-    background-color: #f0f0f0;
-    padding: 2px 4px;
-    border-radius: 4px;
+/* Button Styles */
+.submit-button {
+    height: var(--line-height);
 }
 
-.cm-change-added {
-    background-color: rgba(144, 238, 144, 0.5); /* Slightly darker green for added content */
+.reload-button {
+	padding-top: 3px;
+	padding-bottom: 1px;
 }
 
-.cm-change-removed {
-    background-color: rgba(255, 99, 71, 0.5); /* Slightly darker red for removed content */
+.accept-button {
+    background-color: var(--interactive-accent) !important;
+    color: var(--text-on-accent) !important;
 }
 
-.cm-selection-highlight {
-    background-color: rgba(255, 255, 0, 0.4); /* Semi-transparent yellow */
-    /* You can add more styles as needed */
+.tooltip-button {
+    height: 100%;
+    margin-left: 8px;
+    border: 1px solid var(--background-modifier-border-focus);
+}
+
+
+.cm-selected-inline {
+    background-color: var(--text-highlight-bg);
+}
+
+/* Tooltip Arrow */
+.cm-tooltip-arrow {
+    width: 0;
+    height: 0;
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-top: 7px solid var(--background-modifier-border) !important;
+}
+
+
+.cm-diff-added {
+  background-color: var(--color-green);
+}
+ 
+.cm-diff-removed {
+    background-color: var(--color-red);
+    text-decoration: line-through;
 }

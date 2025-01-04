@@ -1,21 +1,27 @@
+// main.ts
 import { Plugin, MarkdownView, App } from "obsidian";
-import {
-	cursorTooltipExtension,
-	showTooltipEffect,
-} from "./modules/tooltipExtension";
 import { EditorView } from "@codemirror/view";
-import { conflictMarkers } from "./modules/diffExtension";
 import { MyPluginSettings, DEFAULT_SETTINGS, MyPluginSettingTab } from "./settings";
+import { commandEffect, selectionOverlayWidget } from "./modules/WidgetExtension";
+import { ChatApiManager } from "./api";
+import { AIResponseField } from "./modules/AIExtension";
+import { selectionHighlightField, selectionInfoField, setSelectionInfoEffect } from "./modules/SelectionSate";
+import { diffField } from "./modules/diffExtension";
 
 export default class MyPlugin extends Plugin {
 	settings: MyPluginSettings = DEFAULT_SETTINGS;
 
 	async onload() {
 		await this.loadSettings();
+		const chatapi = new ChatApiManager(this.settings, this.app);
 
-		// Register the cursor tooltip extension
-		this.registerEditorExtension(cursorTooltipExtension(this.app));
-		this.registerEditorExtension(conflictMarkers());
+		this.registerEditorExtension([
+			selectionOverlayWidget(chatapi),
+			AIResponseField,
+			selectionInfoField,
+			selectionHighlightField,
+			diffField,
+		]);
 
 		// Add command to show tooltip
 		this.addCommand({
@@ -24,19 +30,38 @@ export default class MyPlugin extends Plugin {
 			callback: () => {
 				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
 				if (markdownView) {
-					// Dispatch the effect to show the tooltip
-					((markdownView.editor as any).cm as EditorView).dispatch({
-						effects: showTooltipEffect.of(null),
-					});
+					const cmEditor = (markdownView.editor as any).cm as EditorView;
+
+					// Grab the main selection range
+					const { from, to } = cmEditor.state.selection.main;
+					const effects = [];
+
+					if (from !== to) {
+						// If there is a real selection, store it
+						const selectedText = cmEditor.state.doc.sliceString(from, to);
+						effects.push(
+							setSelectionInfoEffect.of({ from, to, text: selectedText })
+						);
+					} else {
+						// If no selection, you could clear it or do nothing
+						effects.push(setSelectionInfoEffect.of(null));
+					}
+
+					// Also trigger the overlay
+					effects.push(commandEffect.of(null));
+
+					// Dispatch all effects in one go
+					cmEditor.dispatch({ effects });
 				}
 			},
 			hotkeys: [
 				{
-					modifiers: ["Mod"], // "Mod" stands for "Ctrl" on Windows/Linux and "Cmd" on macOS
-					key: "a", // You can change this key to your preference
+					modifiers: ["Mod"],
+					key: "a",
 				},
 			],
 		});
+
 
 		// Add settings tab
 		this.addSettingTab(new MyPluginSettingTab(this.app, this));

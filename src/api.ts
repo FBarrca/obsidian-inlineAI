@@ -1,71 +1,148 @@
 // api.ts
 import { ChatOpenAI } from "@langchain/openai";
-import { ChatOllama } from "@langchain/ollama"; // Replace with actual Ollama import
-
-import {
-  generateFineGrainedConflictWithinLine,
-  generateFineGrainedConflictWithinLineString,
-} from "./helpers/conflictMarkers";
+import { ChatOllama } from "@langchain/ollama";
 import { SystemMessage, HumanMessage, AIMessage } from "@langchain/core/messages";
 import { MyPluginSettings } from "./settings";
+import { App, MarkdownView } from "obsidian";
+import { EditorView } from "@codemirror/view";
+import { setAIResponseEffect } from "./modules/AIExtension";
 
-// Function to initialize the appropriate chat client based on provider
-function initializeChatClient(settings: MyPluginSettings) {
-  if (settings.provider === "openai") {
-    if (!settings.apiKey) {
-      throw new Error("OpenAI API key is required when using OpenAI as the provider.");
-    }
-    return new ChatOpenAI({
-      modelName: settings.model,
-      temperature: 0, // Set temperature to 0 for deterministic outputs
-      apiKey: settings.apiKey,
-    });
-  } else if (settings.provider === "ollama") {
-    // Initialize Ollama client. Replace with actual initialization code.
-    return new ChatOllama({
-      model: settings.model,
-      // Add other necessary configurations for Ollama if needed
-    });
-  } else {
-    throw new Error(`Unsupported provider: ${settings.provider}`);
+/**
+ * Class to manage interactions with different chat APIs.
+ */
+export class ChatApiManager {
+  private chatClient: ChatOpenAI | ChatOllama;
+  private app: App;
+
+  /**
+   * Initializes the ChatApiManager with the given settings.
+   * @param settings - Configuration settings for the chat API.
+   */
+  constructor(private settings: MyPluginSettings, app: App) {
+    this.app = app;
+    this.chatClient = this.initializeChatClient(settings);
   }
-}
 
-export async function callApi(
-  content: string,
-  context: string,
-  settings: MyPluginSettings
-): Promise<{ generated: string; diff: string }> {
-  // Initialize the appropriate chat client based on settings
-  const chat = initializeChatClient(settings);
+  /**
+   * Initializes the appropriate chat client based on the provider specified in settings.
+   * @param settings - Configuration settings for the chat API.
+   * @returns An instance of ChatOpenAI or ChatOllama.
+   * @throws Error if the provider is unsupported or required settings are missing.
+   */
+  private initializeChatClient(settings: MyPluginSettings): ChatOpenAI | ChatOllama {
+    switch (settings.provider) {
+      case "openai":
+        if (!settings.apiKey) {
+          throw new Error("OpenAI API key is required when using OpenAI as the provider.");
+        }
+        return new ChatOpenAI({
+          modelName: settings.model,
+          temperature: 0, // Set temperature to 0 for deterministic outputs
+          apiKey: settings.apiKey,
+        });
 
-  // Prepare the messages array using LangChain message classes
-  const messages = [
-    new SystemMessage(
-      "Reply to the user request, do not add any intro messages or any alternative outputs, just do one example of what you are told"
-    ),
-    new HumanMessage(`\`\`\`\n${context}\n${content}\`\`\``),
-  ];
+      case "ollama":
+        return new ChatOllama({
+          model: settings.model,
+          // Add other necessary configurations for Ollama if needed
+        });
 
-  try {
-    // Call the chat model with the prepared messages
-    const aiMessage: AIMessage = await chat.call(messages);
-    const generatedContentString = aiMessage.content.toString();
+      default:
+        throw new Error(`Unsupported provider: ${settings.provider}`);
+    }
+  }
 
-    // Log the fine-grained conflict for debugging or analysis
-    console.log(
-      generateFineGrainedConflictWithinLine(context, generatedContentString)
-    );
+  /**
+   * Calls the chat API with the provided content and context.
+   * @param systemMessage - The system message to send to the chat API.
+   * @param message - The user's message to send to the chat API.
+   * @returns A promise that resolves with the generated content.
+   * @throws Error if the API call fails.
+   */
+  public async callApi(systemMessage: string, message: string): Promise<string> {
+    const messages = [
+      new SystemMessage(systemMessage),
+      new HumanMessage(message),
+    ];
 
-    return {
-      generated: generatedContentString,
-      diff: generateFineGrainedConflictWithinLineString(
-        context,
-        generatedContentString
-      ),
-    };
-  } catch (error) {
-    console.error("Error calling the chat model:", error);
-    throw new Error("Failed to generate response from the chat model.");
+    try {
+      const aiMessage: AIMessage = await this.chatClient.invoke(messages);
+      return aiMessage.content.toString();
+    } catch (error) {
+      console.error("Error calling the chat model:", error);
+      throw new Error("Failed to generate response from the chat model.");
+    }
+  }
+
+  /**
+   * Handles user input and updates the editor with the response.
+   * @param systemPrompt - The system prompt to send to the chat API.
+   * @param userRequest - The user's request to process.
+   * @returns The AI-generated response.
+   */
+  private async handleEditorUpdate(systemPrompt: string, userRequest: string): Promise<string> {
+    try {
+      const response = await this.callApi(systemPrompt, userRequest);
+      const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
+
+      if (!markdownView) return "";
+
+      const mainEditorView = (markdownView.editor as any).cm as EditorView;
+      mainEditorView?.dispatch({
+        effects: setAIResponseEffect.of({ airesponse: response, prompt: userRequest }),
+      });
+
+      return response;
+    } catch (error) {
+      console.error("Error processing request:", error);
+      throw new Error("Failed to process request.");
+    }
+  }
+
+  /**
+   * Handles user input and generates a response using the cursor API.
+   * @param userRequest - The user's request to process.
+   * @returns The AI-generated response.
+   */
+  public async callCursor(userRequest: string): Promise<string> {
+    const systemPrompt = "You are a helpful assistant. Please help the user with the following request:";
+    return this.handleEditorUpdate(systemPrompt, userRequest);
+  }
+
+  /**
+   * Processes selected text using the specified prompt and transformation.
+   * @param prompt - The transformation prompt (e.g., "Add Emojis").
+   * @param selectedText - The selected text to transform.
+   * @returns The transformed text.
+   */
+  public async callSelection(prompt: string, selectedText: string): Promise<string> {
+    const systemPrompt = `
+**System Prompt:**
+You are an advanced language model that performs text transformations based on specific instructions. Your task is to process input text to produce the desired output based on a given transformation type. You can handle tasks like adding emojis, making text longer or shorter, and converting text into tables among many others. Follow the examples provided to guide your responses.
+It is **very important** that you follow the examples. Do not add anything at the start of the output like "Output:" or "Here's arephrased version of the input text:" or anything similar. Just provide the transformed text.
+
+**Examples:**
+
+---
+
+**Task:** Add Emojis.  
+**Prompt:** Add relevant emojis to make the text more engaging.  
+
+**Input:**  
+"Let's celebrate the success of our project."  
+
+**Output:**  
+"🎉 Let's celebrate the success of our project! 🚀👏"  
+
+---
+`;
+
+    const userPrompt = `
+**Task:** ${prompt}  
+**Input:**  
+${selectedText}
+
+**Output:**`
+    return this.handleEditorUpdate(systemPrompt, userPrompt);
   }
 }
