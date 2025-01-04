@@ -52,7 +52,7 @@
 }
 
 .tooltip-button {
-    height: 100%;
+    height: var(--line-height);
     margin-left: 8px;
     border: 1px solid var(--background-modifier-border-focus);
 }
@@ -100,4 +100,20 @@
 .cm-selection-highlight {
     background-color: rgba(255, 255, 0, 0.4); /* Semi-transparent yellow */
     /* You can add more styles as needed */
+}
+
+.primary-action {
+    background-color: #007bff;
+    color: white;
+}
+
+.neutral-action {
+    background-color: #6c757d;
+    color: white;
+}
+
+
+
+.tooltip-button:hover {
+    opacity: 0.8;
 }
