@@ -14,7 +14,7 @@ import {
 } from "@codemirror/view";
 import { diffWords, Change } from "diff";
 
-import { acceptTooltipEffect, dismmisTooltipEffect } from "./WidgetExtension";
+import { acceptTooltipEffect, dismissTooltipEffect } from "./WidgetExtension";
 import { AIResponseField, setAIResponseEffect } from "./AIExtension";
 import { selectionInfoField } from "./SelectionSate";
 
@@ -166,7 +166,7 @@ export const diffField = StateField.define<DecorationSet>({
         }
 
         // Check if the dismiss tooltip effect is present
-        const hasDismissEffect = tr.effects.some(e => e.is(dismmisTooltipEffect));
+        const hasDismissEffect = tr.effects.some(e => e.is(dismissTooltipEffect));
         if (hasDismissEffect) {
             return Decoration.none;
         }

@@ -2,7 +2,7 @@
 import { StateEffect, StateField } from "@codemirror/state";
 import { Decoration, DecorationSet } from "@codemirror/view";
 import { EditorView } from "@codemirror/view";
-import { dismmisTooltipEffect } from "./WidgetExtension";
+import { dismissTooltipEffect } from "./WidgetExtension";
 
 /**
  * Interface describing the selection range and text.
@@ -30,7 +30,7 @@ export const selectionInfoField = StateField.define<SelectionInfo | null>({
         const effect = tr.effects.find(e => e.is(setSelectionInfoEffect));
         if (effect) {
             return effect.value;
-        } else if (tr.effects.some(e => e.is(dismmisTooltipEffect))) {
+        } else if (tr.effects.some(e => e.is(dismissTooltipEffect))) {
             return null;
         }
 

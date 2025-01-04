@@ -20,7 +20,7 @@ import { selectionInfoField, SelectionInfo } from "./SelectionSate";
 
 // Some existing exports
 export const commandEffect = StateEffect.define<null>();
-export const dismmisTooltipEffect = StateEffect.define<null>();
+export const dismissTooltipEffect = StateEffect.define<null>();
 export const acceptTooltipEffect = StateEffect.define<null>();
 export const reloadTooltipEffect = StateEffect.define<null>();
 
@@ -108,7 +108,7 @@ class CursorOverlayWidget extends WidgetType {
     private dismissTooltip() {
         if (this.outerEditorView) {
             this.outerEditorView.dispatch({
-                effects: dismmisTooltipEffect.of(null),
+                effects: dismissTooltipEffect.of(null),
             });
         }
     }
@@ -361,7 +361,7 @@ function TooltipFiled(chatApiManager: ChatApiManager) {
                 return getSelectionOverlayDecorations(tr.state, chatApiManager);
             }
             // Or dismiss it
-            if (tr.effects.some((e) => e.is(dismmisTooltipEffect))) {
+            if (tr.effects.some((e) => e.is(dismissTooltipEffect))) {
                 return Decoration.none;
             }
             // Otherwise, return the existing overlay
