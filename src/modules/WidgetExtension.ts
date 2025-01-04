@@ -40,7 +40,6 @@ class FloatingWidget extends WidgetType {
     //Secondary Action Buttons
     private acceptButton!: HTMLButtonElement;
     private discardButton!: HTMLButtonElement;
-    private reloadButton!: HTMLButtonElement;
 
     constructor(chatApiManager: ChatApiManager, selectionInfo: SelectionInfo | null) {
         super();
@@ -226,56 +225,44 @@ class FloatingWidget extends WidgetType {
         // Create Accept, Discard, and Reload buttons
         this.createAcceptButton();
         this.createDiscardButton();
-        this.createReloadButton();
     }
 
     /**
      * Creates the Accept button.
      */
     private createAcceptButton() {
-        this.acceptButton = document.createElement("button");
-        this.acceptButton.textContent = "Accept";
-        this.acceptButton.className = "accept-button tooltip-button primary-action";
-        setIcon(this.acceptButton, "check");
+        if (!this.acceptButton) {
+            this.acceptButton = document.createElement("button");
+            this.acceptButton.textContent = "Accept";
+            this.acceptButton.className = "accept-button tooltip-button primary-action";
+            setIcon(this.acceptButton, "check");
 
-        this.acceptButton.onclick = () => {
-            this.acceptAction();
-        };
+            this.acceptButton.onclick = () => {
+                this.acceptAction();
+            };
 
-        this.innerDom.appendChild(this.acceptButton);
+            this.innerDom.appendChild(this.acceptButton);
+        }
     }
 
     /**
      * Creates the Discard button.
      */
     private createDiscardButton() {
-        this.discardButton = document.createElement("button");
-        this.discardButton.textContent = "Discard";
-        this.discardButton.className = "discard-button tooltip-button neutral-action";
-        setIcon(this.discardButton, "cross");
+        if (!this.discardButton) {
+            this.discardButton = document.createElement("button");
+            this.discardButton.textContent = "Discard";
+            this.discardButton.className = "discard-button tooltip-button neutral-action";
+            setIcon(this.discardButton, "cross");
 
-        this.discardButton.onclick = () => {
-            this.discardAction();
-        };
+            this.discardButton.onclick = () => {
+                this.discardAction();
+            };
 
-        this.innerDom.appendChild(this.discardButton);
+            this.innerDom.appendChild(this.discardButton);
+        }
     }
 
-    /**
-     * Creates the Reload button.
-     */
-    private createReloadButton() {
-        this.reloadButton = document.createElement("button");
-        this.reloadButton.textContent = "Reload";
-        this.reloadButton.className = "reload-button tooltip-button neutral-action";
-        setIcon(this.reloadButton, "rotate-ccw"); // Assuming "reload" is a valid icon
-
-        this.reloadButton.onclick = () => {
-            this.reloadAction();
-        };
-
-        this.innerDom.appendChild(this.reloadButton);
-    }
 
     /**
      * Handles the Accept action.
@@ -295,9 +282,6 @@ class FloatingWidget extends WidgetType {
         this.dismissTooltip();
     }
 
-    private reloadAction() {
-        this.submitAction();
-    }
 }
 
 /**
