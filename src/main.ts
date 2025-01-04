@@ -4,9 +4,9 @@ import { EditorView } from "@codemirror/view";
 import { MyPluginSettings, DEFAULT_SETTINGS, MyPluginSettingTab } from "./settings";
 import { commandEffect, FloatingTooltipExtension } from "./modules/WidgetExtension";
 import { ChatApiManager } from "./api";
-import { AIResponseField } from "./modules/AIExtension";
+import { generatedResponseState } from "./modules/AIExtension";
 import { buildSelectionHiglightState, currentSelectionState, setSelectionInfoEffect } from "./modules/SelectionSate";
-import { diffExtension, diffDecorationState } from "./modules/diffExtension";
+import { diffExtension } from "./modules/diffExtension";
 
 export default class MyPlugin extends Plugin {
 	settings: MyPluginSettings = DEFAULT_SETTINGS;
@@ -17,7 +17,7 @@ export default class MyPlugin extends Plugin {
 
 		this.registerEditorExtension([
 			FloatingTooltipExtension(chatapi),
-			AIResponseField,
+			generatedResponseState,
 			currentSelectionState,
 			buildSelectionHiglightState,
 			diffExtension

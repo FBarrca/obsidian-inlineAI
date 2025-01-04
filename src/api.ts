@@ -5,7 +5,7 @@ import { SystemMessage, HumanMessage, AIMessage } from "@langchain/core/messages
 import { MyPluginSettings } from "./settings";
 import { App, MarkdownView } from "obsidian";
 import { EditorView } from "@codemirror/view";
-import { setAIResponseEffect } from "./modules/AIExtension";
+import { setGeneratedResponseEffect } from "./modules/AIExtension";
 
 /**
  * Class to manage interactions with different chat APIs.
@@ -89,7 +89,7 @@ export class ChatApiManager {
 
       const mainEditorView = (markdownView.editor as any).cm as EditorView;
       mainEditorView?.dispatch({
-        effects: setAIResponseEffect.of({ airesponse: response, prompt: userRequest }),
+        effects: setGeneratedResponseEffect.of({ airesponse: response, prompt: userRequest }),
       });
 
       return response;

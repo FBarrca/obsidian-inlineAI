@@ -15,7 +15,7 @@ import {
 import { diffWords, Change } from "diff";
 
 import { acceptTooltipEffect, dismissTooltipEffect } from "./WidgetExtension";
-import { AIResponseField as generatedResponseState, setAIResponseEffect as setGeneratedResponseEffect } from "./AIExtension";
+import { generatedResponseState, setGeneratedResponseEffect } from "./AIExtension";
 import { currentSelectionState } from "./SelectionSate";
 
 
