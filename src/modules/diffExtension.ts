@@ -73,7 +73,7 @@ function generateDiffView(state: EditorState): DecorationSet {
 
         // Initialize RangeSetBuilder for efficient decoration construction
         const builder = new RangeSetBuilder<Decoration>();
-        let currentPos = 0;
+        let currentPos = context?.from ?? 0;
 
         diffResult.forEach((part) => {
             const { added, removed, value } = part;
