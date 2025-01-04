@@ -22,7 +22,6 @@ import { selectionInfoField, SelectionInfo } from "./SelectionSate";
 export const commandEffect = StateEffect.define<null>();
 export const dismissTooltipEffect = StateEffect.define<null>();
 export const acceptTooltipEffect = StateEffect.define<null>();
-export const reloadTooltipEffect = StateEffect.define<null>();
 
 class CursorOverlayWidget extends WidgetType {
     private chatApiManager: ChatApiManager;
