@@ -22,7 +22,6 @@ import { selectionInfoField, SelectionInfo } from "./SelectionSate";
 export const commandEffect = StateEffect.define<null>();
 export const dismmisTooltipEffect = StateEffect.define<null>();
 export const acceptTooltipEffect = StateEffect.define<null>();
-export const discardTooltipEffect = StateEffect.define<null>();
 export const reloadTooltipEffect = StateEffect.define<null>();
 
 class CursorOverlayWidget extends WidgetType {
@@ -35,8 +34,14 @@ class CursorOverlayWidget extends WidgetType {
     private innerDom = document.createElement("div");
 
     private textFieldView?: EditorView;
+    // Primary Action Buttons
     private submitButton!: HTMLButtonElement;
     private loaderElement!: HTMLElement;
+
+    //Secondary Action Buttons
+    private acceptButton!: HTMLButtonElement;
+    private discardButton!: HTMLButtonElement;
+    private reloadButton!: HTMLButtonElement;
 
     constructor(chatApiManager: ChatApiManager, selectionInfo: SelectionInfo | null) {
         super();
@@ -104,6 +109,14 @@ class CursorOverlayWidget extends WidgetType {
         if (this.outerEditorView) {
             this.outerEditorView.dispatch({
                 effects: dismmisTooltipEffect.of(null),
+            });
+        }
+    }
+
+    private acceptChange() {
+        if (this.outerEditorView) {
+            this.outerEditorView.dispatch({
+                effects: acceptTooltipEffect.of(null),
             });
         }
     }
@@ -185,7 +198,9 @@ class CursorOverlayWidget extends WidgetType {
             .callSelection(userPrompt, selectedText)
             .then((aiResponse) => {
                 // Optionally handle or display aiResponse
-                // we dont use it here as we are dispatching the effect from the method
+                // For this implementation, we'll assume the AI response is handled via state effects
+                // and we'll transition to the action buttons stage.
+                this.showActionButtons();
             })
             .catch((error) => {
                 console.error("Error calling AI:", error);
@@ -194,6 +209,7 @@ class CursorOverlayWidget extends WidgetType {
                 // Hide loader
                 this.toggleLoading(false);
             });
+
     }
 
     /**
@@ -208,6 +224,100 @@ class CursorOverlayWidget extends WidgetType {
             this.submitButton.style.display = "inline-block";
             this.loaderElement.style.display = "none";
         }
+    }
+
+    /**
+     * Transitions the widget to show Accept, Discard, and Reload buttons.
+     */
+    private showActionButtons() {
+        // Clear existing inner content
+        this.submitButton.style.display = "none";
+
+        // Create Accept, Discard, and Reload buttons
+        this.createAcceptButton();
+        this.createDiscardButton();
+        this.createReloadButton();
+    }
+
+    /**
+     * Creates the Accept button.
+     */
+    private createAcceptButton() {
+        this.acceptButton = document.createElement("button");
+        this.acceptButton.textContent = "Accept";
+        this.acceptButton.className = "accept-button tooltip-button primary-action";
+        setIcon(this.acceptButton, "check");
+
+        this.acceptButton.onclick = () => {
+            this.acceptAction();
+        };
+
+        this.innerDom.appendChild(this.acceptButton);
+    }
+
+    /**
+     * Creates the Discard button.
+     */
+    private createDiscardButton() {
+        this.discardButton = document.createElement("button");
+        this.discardButton.textContent = "Discard";
+        this.discardButton.className = "discard-button tooltip-button neutral-action";
+        setIcon(this.discardButton, "cross");
+
+        this.discardButton.onclick = () => {
+            this.discardAction();
+        };
+
+        this.innerDom.appendChild(this.discardButton);
+    }
+
+    /**
+     * Creates the Reload button.
+     */
+    private createReloadButton() {
+        this.reloadButton = document.createElement("button");
+        this.reloadButton.textContent = "Reload";
+        this.reloadButton.className = "reload-button tooltip-button neutral-action";
+        setIcon(this.reloadButton, "rotate-ccw"); // Assuming "reload" is a valid icon
+
+        this.reloadButton.onclick = () => {
+            this.reloadAction();
+        };
+
+        this.innerDom.appendChild(this.reloadButton);
+    }
+
+    /**
+     * Handles the Accept action.
+     * Confirms the result, applies changes, and closes the tooltip.
+     */
+    private acceptAction() {
+        console.log("Accept button clicked");
+
+        this.acceptChange();
+        // After applying changes, dismiss the tooltip
+        this.dismissTooltip();
+    }
+
+    /**
+     * Handles the Discard action.
+     * Rejects the result and closes the tooltip without applying changes.
+     */
+    private discardAction() {
+        console.log("Discard button clicked");
+        // Simply dismiss the tooltip without applying any changes
+        this.dismissTooltip();
+    }
+
+    /**
+     * Handles the Reload action.
+     * Reprocesses the query based on current edits.
+     */
+    private reloadAction() {
+        console.log("Reload button clicked");
+        // Optionally, you might want to re-open the input field or re-submit the current prompt.
+        // For this example, we'll transition back to the input stage.
+        this.submitAction();
     }
 }
 

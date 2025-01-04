@@ -1,7 +1,6 @@
 // modules/diffExtension.ts
 import {
     EditorState,
-    StateEffect,
     StateField,
     RangeSetBuilder,
 } from "@codemirror/state";
@@ -10,10 +9,12 @@ import {
     DecorationSet,
     EditorView,
     WidgetType,
+    ViewPlugin,
+    ViewUpdate,
 } from "@codemirror/view";
 import { diffWords, Change } from "diff";
 
-import { dismmisTooltipEffect } from "./WidgetExtension";
+import { acceptTooltipEffect, dismmisTooltipEffect } from "./WidgetExtension";
 import { AIResponseField, setAIResponseEffect } from "./AIExtension";
 import { selectionInfoField } from "./SelectionSate";
 
@@ -72,14 +73,8 @@ function generateDiffView(state: EditorState): DecorationSet {
             aiResponse: response,
             contextText: context,
         });
+        console.log("AI Response:", response, "Context Text:", context);
 
-        console.log(
-            "AI Response:",
-            response,
-            "Context Text:",
-            context
-        )
-        // Compute the word-level differences using the 'diff' package
         const diffResult: Change[] = diffWords(contextText, aiText);
 
         // Initialize RangeSetBuilder for efficient decoration construction
@@ -131,26 +126,43 @@ function generateDiffView(state: EditorState): DecorationSet {
 }
 
 /**
- * Defines a StateField to manage the diff decorations.
+ * This function takes the current editor state and the view, and applies the AI-suggested changes.
+ *
+ * @param state - The current editor state.
+ * @param view - The EditorView instance.
+ */
+function applyDiffChanges(state: EditorState, view: EditorView): void {
+    try {
+        console.log("Applying diff changes");
+        // Grab the AI text and selection info (original context)
+        const response = state.field(AIResponseField);
+        const context = state.field(selectionInfoField);
+
+        const aiText: string = response?.airesponse ?? "";
+        const selectionFrom = context?.from ?? 0;
+        const selectionTo = context?.to ?? 0;
+
+        // Dispatch the transaction to apply the AI changes
+        view.dispatch({
+            changes: { from: selectionFrom, to: selectionTo, insert: aiText },
+        });
+
+    } catch (error) {
+        console.error("Error applying diff changes:", error);
+    }
+}
+
+/**
+ * Our main diff field that reacts to AI response effects, accept tooltip, etc.
  */
 export const diffField = StateField.define<DecorationSet>({
     create(): DecorationSet {
         return Decoration.none;
     },
-    update(decorations: DecorationSet, tr): DecorationSet {
-
-        // Check if the AI response effect is present
-        const hasAIResponseEffect = tr.effects.some(e => e.is(setAIResponseEffect));
-        if (hasAIResponseEffect) {
-            const effect = tr.effects.find(e => e.is(setAIResponseEffect));
-            if (effect && effect !== null) {
-                console.debug("Received AI response");
-                console.log("AI Response:", effect);
-                return generateDiffView(tr.state);
-            } else {
-                console.error("Error in AI response effect");
-                return Decoration.none;
-            }
+    update(decorations: DecorationSet, tr) {
+        // Check if we got the AI response effect
+        if (tr.effects.some(e => e.is(setAIResponseEffect))) {
+            return generateDiffView(tr.state);
         }
 
         // Check if the dismiss tooltip effect is present
@@ -166,8 +178,28 @@ export const diffField = StateField.define<DecorationSet>({
 });
 
 /**
+ * Plugin to handle applying diff changes when the accept tooltip effect is triggered.
+ */
+const applyDiffPlugin = ViewPlugin.fromClass(class {
+    update(update: ViewUpdate) {
+        // Iterate through all transactions in the update
+        for (const transaction of update.transactions) {
+            for (const effect of transaction.effects) {
+                if (effect.is(acceptTooltipEffect)) {
+                    // Apply the diff changes by dispatching the transaction
+                    setTimeout(() => {
+                        applyDiffChanges(update.state, update.view);
+                    }, 0);
+                }
+            }
+        }
+    }
+});
+
+/**
  * Exported extension to be included in the EditorView.
  */
 export const diffExtension = [
     diffField,
+    applyDiffPlugin,
 ];

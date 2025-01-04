@@ -6,7 +6,7 @@ import { commandEffect, selectionOverlayWidget } from "./modules/WidgetExtension
 import { ChatApiManager } from "./api";
 import { AIResponseField } from "./modules/AIExtension";
 import { selectionHighlightField, selectionInfoField, setSelectionInfoEffect } from "./modules/SelectionSate";
-import { diffField } from "./modules/diffExtension";
+import { diffExtension, diffField } from "./modules/diffExtension";
 
 export default class MyPlugin extends Plugin {
 	settings: MyPluginSettings = DEFAULT_SETTINGS;
@@ -20,7 +20,8 @@ export default class MyPlugin extends Plugin {
 			AIResponseField,
 			selectionInfoField,
 			selectionHighlightField,
-			diffField,
+			diffExtension
+
 		]);
 
 		// Add command to show tooltip
