@@ -18,22 +18,23 @@ import { ChatApiManager } from "../api";
 
 import { selectionInfoField, SelectionInfo } from "./SelectionSate";
 
-// Trigger the effect with a keybinding or command
+// Some existing exports
 export const commandEffect = StateEffect.define<null>();
 export const dismmisTooltipEffect = StateEffect.define<null>();
 export const acceptTooltipEffect = StateEffect.define<null>();
 export const discardTooltipEffect = StateEffect.define<null>();
 export const reloadTooltipEffect = StateEffect.define<null>();
 
-/**
- * Custom widget to display an overlay near the cursor.
- */
 class CursorOverlayWidget extends WidgetType {
     private chatApiManager: ChatApiManager;
     private selectionInfo: SelectionInfo | null;
-    dom = document.createElement("div");
-    innerDom = document.createElement("div");
-    editorView?: EditorView;
+
+    private outerEditorView: EditorView | null = null;
+
+    private dom = document.createElement("div");
+    private innerDom = document.createElement("div");
+
+    private textFieldView?: EditorView;
     private submitButton!: HTMLButtonElement;
     private loaderElement!: HTMLElement;
 
@@ -47,17 +48,26 @@ class CursorOverlayWidget extends WidgetType {
         this.dom.appendChild(this.innerDom);
     }
 
-    toDOM(): HTMLElement {
+    /**
+     * IMPORTANT:
+     * Overriding toDOM(view: EditorView) instead of just toDOM().
+     * This gives us a reference to the **outer** EditorView that
+     * is rendering this widget decoration.
+     */
+    public override toDOM(view: EditorView): HTMLElement {
+        // Capture the outer EditorView
+        this.outerEditorView = view;
+
         this.createPencilIcon();
         this.createInputField();
         this.createSubmitButton();
         this.createLoader();
 
         setTimeout(() => {
-            this.editorView?.focus();
+            this.textFieldView?.focus();
         }, 0);
 
-        // Add event listeners for dismissal
+        // Setup "click outside" and "Escape" dismissal
         const onClickOutside = (event: MouseEvent) => {
             if (!this.dom.contains(event.target as Node)) {
                 this.dismissTooltip();
@@ -73,7 +83,7 @@ class CursorOverlayWidget extends WidgetType {
         document.addEventListener("mousedown", onClickOutside);
         document.addEventListener("keydown", onEscape);
 
-        // Cleanup listeners in destroy
+        // Cleanup
         this.dom.addEventListener("destroy", () => {
             document.removeEventListener("mousedown", onClickOutside);
             document.removeEventListener("keydown", onEscape);
@@ -82,17 +92,17 @@ class CursorOverlayWidget extends WidgetType {
         return this.dom;
     }
 
-    destroy(): void {
+    public override destroy(): void {
         console.log("CursorOverlayWidget destroyed");
-        this.editorView?.destroy();
+        this.textFieldView?.destroy();
         this.innerDom.innerHTML = "";
-        this.editorView = undefined;
+        this.textFieldView = undefined;
+        this.outerEditorView = null;
     }
 
     private dismissTooltip() {
-        const view = this.editorView;
-        if (view) {
-            view.dispatch({
+        if (this.outerEditorView) {
+            this.outerEditorView.dispatch({
                 effects: dismmisTooltipEffect.of(null),
             });
         }
@@ -113,7 +123,7 @@ class CursorOverlayWidget extends WidgetType {
         editorDom.style.userSelect = "text";
         this.innerDom.appendChild(editorDom);
 
-        this.editorView = new EditorView({
+        this.textFieldView = new EditorView({
             state: EditorState.create({
                 doc: "",
                 extensions: [
@@ -157,7 +167,7 @@ class CursorOverlayWidget extends WidgetType {
      * Handles the submit action by calling the AI with the user input and the selected text.
      */
     private submitAction() {
-        const userPrompt = this.editorView?.state.doc.toString() ?? "";
+        const userPrompt = this.textFieldView?.state.doc.toString() ?? "";
         console.log("User Input:", userPrompt);
 
         if (!userPrompt.trim()) {

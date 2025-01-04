@@ -138,7 +138,6 @@ export const diffField = StateField.define<DecorationSet>({
         return Decoration.none;
     },
     update(decorations: DecorationSet, tr): DecorationSet {
-        let shouldRecompute = false;
 
         // Check if the AI response effect is present
         const hasAIResponseEffect = tr.effects.some(e => e.is(setAIResponseEffect));
@@ -147,28 +146,17 @@ export const diffField = StateField.define<DecorationSet>({
             if (effect && effect !== null) {
                 console.debug("Received AI response");
                 console.log("AI Response:", effect);
-                shouldRecompute = true;
+                return generateDiffView(tr.state);
             } else {
                 console.error("Error in AI response effect");
                 return Decoration.none;
             }
-
-
         }
 
         // Check if the dismiss tooltip effect is present
         const hasDismissEffect = tr.effects.some(e => e.is(dismmisTooltipEffect));
         if (hasDismissEffect) {
             return Decoration.none;
-        }
-
-        // Check if the document or selection has changed
-        if (tr.docChanged || tr.selection) {
-            shouldRecompute = true;
-        }
-
-        if (shouldRecompute) {
-            return generateDiffView(tr.state);
         }
 
         // Retain the existing decorations if no relevant changes
