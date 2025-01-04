@@ -304,7 +304,9 @@ function renderFloatingWidget(
     const deco = Decoration.widget({
         widget: new FloatingWidget(chatApiManager, selectionInfo),
         above: true,
-        inline: false,
+        inline: true,
+        side: -9999,
+
     }).range(firstSelectedRange.from);
 
     return Decoration.set([deco]);
