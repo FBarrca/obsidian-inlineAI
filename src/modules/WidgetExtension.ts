@@ -210,7 +210,7 @@ class FloatingWidget extends WidgetType {
             this.submitButton.style.display = "none";
             this.loaderElement.style.display = "flex";
         } else {
-            this.submitButton.style.display = "inline-block";
+            this.submitButton.style.display = "flex";
             this.loaderElement.style.display = "none";
         }
     }
@@ -252,7 +252,7 @@ class FloatingWidget extends WidgetType {
         if (!this.discardButton) {
             this.discardButton = document.createElement("button");
             this.discardButton.textContent = "Discard";
-            this.discardButton.className = "discard-button tooltip-button neutral-action";
+            this.discardButton.className = "discard-button tooltip-button";
             setIcon(this.discardButton, "cross");
 
             this.discardButton.onclick = () => {

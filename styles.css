@@ -1,119 +1,104 @@
 .cm-cursor-overlay {
-    left: -10px;
-    top: -40px;
-    width: 100%;
-    position: absolute;
-    align-items: center;
-    background: var(--background-secondary) !important;
-    color: var(--text-normal);
-    font-size: var(--font-interface-theme);
-    border: 1px solid var(--background-modifier-border) !important;
-    user-select: none;
-    padding: 4px 8px;
-    border-radius: 4px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-    z-index: 1000;
-    visibility: visible;
+	left: -1%;
+	top: -2.2rem;
+	width: 102%;
+	position: absolute;
+	align-items: center;
+	background: var(--background-secondary) !important;
+	color: var(--text-normal);
+	font-size: var(--font-interface-theme);
+	border: 1px solid var(--background-modifier-border) !important;
+	user-select: none;
+	padding: 4px 8px;
+	border-radius: 4px;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+	z-index: 1000;
+	visibility: visible;
 }
 
 .cm-cursor-overlay-inner {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
+	display: flex;
+	flex-direction: row;
+	align-items: center;
 
-    overflow: hidden;
+	overflow: hidden;
 }
 
-    
 .cm-tooltip-editor {
-    display: flex;
-    padding: 1px 0 1px 10px;
-    height: var(--line-height);
-    width: auto;
-    max-height: 100%;
-    align-items: center;
-    background-color: var(--background-primary);
-    border: 1px solid var(--background-modifier-border-focus);
-    border-radius: 4px;
-    overflow: hidden;
-    margin-left: 8px;
-    flex: 1 0 0;
-    transition: flex-basis 0.3s ease;
+	display: flex;
+	padding: 1px 0 1px 10px;
+	height: var(--line-height);
+	width: auto;
+	max-height: 100%;
+	align-items: center;
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border-focus);
+	border-radius: 4px;
+	overflow: hidden;
+	margin-left: 8px;
+	flex: 1 0 0;
+	transition: flex-basis 0.3s ease;
 }
 
 .cm-cursor-overlay .cm-editor {
-    user-select: text;       /* allow text interaction inside the mini-editor */
-  }
+	user-select: text;
+}
 
-
-  /* Button Styles */
+/* Button Styles */
 .submit-button {
-    height: var(--line-height);
+	height: var(--line-height);
 }
 
 .tooltip-button {
-    height: var(--line-height);
-    margin-left: 8px;
-    border: 1px solid var(--background-modifier-border-focus);
+	height: var(--line-height);
+	margin-left: 8px;
+	border: 1px solid var(--background-modifier-border-focus);
+	box-shadow: none !important;
 }
 
 /* Loader Animation */
 .loader {
-    width: 5px;
-    aspect-ratio: 1;
-    border-radius: 50%;
-    color: var(--text-normal);
-    background: var(--background-primary);
-    animation: l5 1s infinite linear alternate;
-    margin: 0 20px 0 26px;
+	width: 5px;
+	aspect-ratio: 1;
+	border-radius: 50%;
+	color: var(--text-normal);
+	background: var(--background-primary);
+	animation: l5 1s infinite linear alternate;
+	margin: 0 20px 0 26px;
 }
 
 @keyframes l5 {
-    0%, 33% {
-        box-shadow: 10px 0 var(--text-accent), -10px 0 var(--text-faint);
-        background: var(--text-accent);
-    }
-    66%, 100% {
-        box-shadow: 10px 0 var(--text-faint), -10px 0 var(--text-accent);
-        background: var(--text-faint);
-    }
+	0%,
+	33% {
+		box-shadow: 10px 0 var(--text-accent), -10px 0 var(--text-faint);
+		background: var(--text-accent);
+	}
+	66%,
+	100% {
+		box-shadow: 10px 0 var(--text-faint), -10px 0 var(--text-accent);
+		background: var(--text-faint);
+	}
 }
 
-
 .cm-change-widget {
-    font-size: 0.9em;
-    margin-left: 4px;
-    color: #555;
-    background-color: #f0f0f0;
-    padding: 2px 4px;
-    border-radius: 4px;
+	padding: 0px 4px;
+	color: var(--text-normal);
+	background-color: var(--background-primary-alt);
 }
 
 .cm-change-added {
-    background-color: rgba(144, 238, 144, 0.5); /* Slightly darker green for added content */
+	background-color: rgba(var(--color-green-rgb), 0.2);
 }
 
 .cm-change-removed {
-    background-color: rgba(255, 99, 71, 0.5); /* Slightly darker red for removed content */
-}
-
-.cm-selection-highlight {
-    background-color: rgba(255, 255, 0, 0.4); /* Semi-transparent yellow */
-    /* You can add more styles as needed */
+	background-color: rgba(var(--color-red-rgb), 0.2);
 }
 
 .primary-action {
-    background-color: #007bff;
-    color: white;
+	background-color: var(--interactive-accent) !important;
+	color: var(--text-on-accent) !important;
 }
-
-.neutral-action {
-    background-color: #6c757d;
-    color: white;
-}
-
-
 
 .tooltip-button:hover {
-    opacity: 0.8;
+	opacity: 0.8;
 }
