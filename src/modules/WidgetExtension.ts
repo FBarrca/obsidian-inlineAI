@@ -293,9 +293,8 @@ function renderFloatingWidget(
     state: EditorState,
     chatApiManager: ChatApiManager
 ): DecorationSet {
-    // If there's no actual selection, bail out
-    const firstSelectedRange = state.selection.ranges.find((range) => !range.empty);
-    if (!firstSelectedRange) return Decoration.none;
+    // If there's no actual selection, use the cursor position
+    const firstSelectedRange = state.selection.ranges.find((range) => !range.empty) ?? state.selection.main;
 
     // Get the entire SelectionInfo (which includes the text)
     const selectionInfo = state.field(currentSelectionState, false) ?? null;
@@ -318,7 +317,7 @@ function renderFloatingWidget(
 function FloatingTooltipState(chatApiManager: ChatApiManager) {
     return StateField.define<DecorationSet>({
         create(state) {
-            return renderFloatingWidget(state, chatApiManager);
+            return Decoration.none;
         },
         update(decorations, tr) {
             // Recompute if the user triggers the command
