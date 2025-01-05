@@ -12,12 +12,11 @@ import {
     ViewPlugin,
     ViewUpdate,
 } from "@codemirror/view";
-import { diffWords, Change } from "diff";
+import DiffMatchPatch from "diff-match-patch";
 
 import { acceptTooltipEffect, dismissTooltipEffect } from "./WidgetExtension";
 import { generatedResponseState, setGeneratedResponseEffect } from "./AIExtension";
 import { currentSelectionState } from "./SelectionSate";
-
 
 /**
  * Widget to display added or removed content.
@@ -51,7 +50,8 @@ class ChangeContentWidget extends WidgetType {
 }
 
 /**
- * Generates a DecorationSet representing the diff between AI response and context.
+ * Generates a DecorationSet representing the diff between AI response and context,
+ * using diff_match_patch with semantic cleanup.
  * @param state - The current editor state.
  * @returns A DecorationSet with the appropriate widgets.
  */
@@ -69,27 +69,34 @@ function generateDiffView(state: EditorState): DecorationSet {
             aiResponse: response,
             contextText: context,
         });
-        const diffResult: Change[] = diffWords(contextText, aiText);
+
+        // Use diff_match_patch instead of diffWords
+        const dmp = new DiffMatchPatch();
+        let diffs = dmp.diff_main(contextText, aiText);
+
+        // Perform semantic cleanup
+        dmp.diff_cleanupSemantic(diffs);
 
         // Initialize RangeSetBuilder for efficient decoration construction
         const builder = new RangeSetBuilder<Decoration>();
         let currentPos = context?.from ?? 0;
 
-        diffResult.forEach((part) => {
-            const { added, removed, value } = part;
-            const length = value.length;
 
-            if (added) {
-                // Highlight added text (AI response)
-                const widget = new ChangeContentWidget(value, 'added');
+        diffs.forEach(([op, text]) => {
+            const length = text.length;
+
+            if (op === DiffMatchPatch.DIFF_INSERT) {
+                // AI text added
+                const widget = new ChangeContentWidget(text, "added");
                 builder.add(
                     currentPos,
                     currentPos,
                     Decoration.widget({ widget, side: 1 })
                 );
-            } else if (removed) {
-                // Highlight removed text (from context)
-                const widget = new ChangeContentWidget(value, 'removed');
+            } else if (op === DiffMatchPatch.DIFF_DELETE) {
+                // Context text removed
+                const widget = new ChangeContentWidget(text, "removed");
+                // Attach the widget over the removed range
                 builder.add(
                     currentPos,
                     currentPos + length,
@@ -97,6 +104,7 @@ function generateDiffView(state: EditorState): DecorationSet {
                 );
                 currentPos += length;
             } else {
+                // No change, move currentPos forward
                 currentPos += length;
             }
         });
@@ -128,12 +136,10 @@ function dispatchAIChanges(state: EditorState, view: EditorView): void {
         view.dispatch({
             changes: { from: selectionFrom, to: selectionTo, insert: aiText },
         });
-
     } catch (error) {
         console.error("Error applying diff changes:", error);
     }
 }
-
 
 export const diffDecorationState = StateField.define<DecorationSet>({
     create(): DecorationSet {

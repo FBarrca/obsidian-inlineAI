@@ -30,7 +30,8 @@
 		"@langchain/core": "^0.3.16",
 		"@langchain/ollama": "^0.1.1",
 		"@langchain/openai": "^0.3.11",
-		"diff": "^7.0.0",
+		"@types/diff-match-patch": "^1.0.36",
+		"diff-match-patch": "^1.0.5",
 		"dotenv": "^16.4.5",
 		"jest-diff": "^29.7.0",
 		"simple-text-diff": "^1.7.0"

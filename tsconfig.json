@@ -11,7 +11,8 @@
 		"importHelpers": true,
 		"isolatedModules": true,
 		"strict": true,
-		"lib": ["DOM", "ESNext"]
+		"lib": ["DOM", "ESNext"],
+		"allowSyntheticDefaultImports": true
 	},
 	"include": ["src/**/*"],
 	"exclude": ["node_modules", "public"]
