@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-inlineAI",
+	"name": "obsidian-inlineai",
 	"version": "1.0.0",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"description": "Cursor or Copilot like Inline AI interface for Obsidian",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
@@ -9,11 +9,10 @@
 		"version": "node version-bump.mjs && git add manifest.json versions.json"
 	},
 	"keywords": [],
-	"author": "",
+	"author": "FBarrca",
 	"license": "MIT",
 	"devDependencies": {
 		"@types/codemirror": "^5.60.15",
-		"@types/diff": "^5.2.3",
 		"@types/node": "^22.8.1",
 		"@typescript-eslint/eslint-plugin": "^8.11.0",
 		"@typescript-eslint/parser": "^8.11.0",
@@ -24,16 +23,12 @@
 	},
 	"dependencies": {
 		"@codemirror/commands": "^6.7.1",
-		"@codemirror/merge": "^6.7.5",
 		"@codemirror/state": "^6.4.1",
 		"@codemirror/view": "^6.34.1",
 		"@langchain/core": "^0.3.16",
 		"@langchain/ollama": "^0.1.1",
 		"@langchain/openai": "^0.3.11",
 		"@types/diff-match-patch": "^1.0.36",
-		"diff-match-patch": "^1.0.5",
-		"dotenv": "^16.4.5",
-		"jest-diff": "^29.7.0",
-		"simple-text-diff": "^1.7.0"
+		"diff-match-patch": "^1.0.5"
 	}
 }
