@@ -1,19 +1,24 @@
 // MyPluginSettings.ts
 import { App, PluginSettingTab, Setting } from "obsidian";
 import MyPlugin from "./main";
+import { cursorPrompt, selectionPrompt } from "./default_prompts";
 
 // Interface for the settings
-export interface MyPluginSettings {
+export interface InlineAISettings {
 	provider: "openai" | "ollama";
 	model: string;
 	apiKey?: string;
+	selectionPrompt: string;
+	cursorPrompt: string;
 }
 
 // Default settings values
-export const DEFAULT_SETTINGS: MyPluginSettings = {
-	provider: "openai",
-	model: "text-davinci-003",
+export const DEFAULT_SETTINGS: InlineAISettings = {
+	provider: "ollama",
+	model: "llama3.2",
 	apiKey: "",
+	selectionPrompt: selectionPrompt,
+	cursorPrompt: cursorPrompt,
 };
 
 // Settings tab class to display settings in Obsidian UI
@@ -29,13 +34,13 @@ export class MyPluginSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		containerEl.createEl("h2", { text: "My Plugin Settings" });
+		
 
 		// Provider setting
 		new Setting(containerEl)
 			.setName("Provider")
 			.setDesc("Choose between OpenAI or Ollama as your provider.")
-			.addDropdown(dropdown => 
+			.addDropdown(dropdown =>
 				dropdown
 					.addOption("openai", "OpenAI")
 					.addOption("ollama", "Ollama")
@@ -51,7 +56,7 @@ export class MyPluginSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Model")
 			.setDesc("Specify the model to use.")
-			.addText(text => 
+			.addText(text =>
 				text
 					.setPlaceholder("e.g., text-davinci-003")
 					.setValue(this.plugin.settings.model)
@@ -66,7 +71,7 @@ export class MyPluginSettingTab extends PluginSettingTab {
 			new Setting(containerEl)
 				.setName("OpenAI API Key")
 				.setDesc("Enter your OpenAI API key.")
-				.addText(text => 
+				.addText(text =>
 					text
 						.setPlaceholder("sk-...")
 						.setValue(this.plugin.settings.apiKey || "")
@@ -76,5 +81,46 @@ export class MyPluginSettingTab extends PluginSettingTab {
 						})
 				);
 		}
+
+		// Advanced Section
+		containerEl.createEl("h3", { text: "Advanced Settings" });
+		// Selection Prompt setting
+		new Setting(containerEl)
+			.setName("Selection Prompt")
+			.setDesc("System Prompt used when the tooltip is triggered with selected text.")
+			.addTextArea((textarea) => {
+				textarea
+					.setPlaceholder("e.g., Summarize the selected text.")
+					.setValue(this.plugin.settings.selectionPrompt)
+					.onChange(async (value) => {
+						this.plugin.settings.selectionPrompt = value;
+						await this.plugin.saveSettings();
+					});
+
+				// Make the text area wider
+				textarea.inputEl.style.width = "25em";
+				textarea.inputEl.style.height = "10em";
+
+			});
+
+		// Cursor Prompt setting
+		new Setting(containerEl)
+			.setName("Cursor Prompt")
+			.setDesc("System Prompt used when the tooltip is triggered with selected text.")
+			.addTextArea((textarea) => {
+				textarea
+					.setPlaceholder("e.g., Generate text based on cursor position.")
+					.setValue(this.plugin.settings.cursorPrompt)
+					.onChange(async (value) => {
+						this.plugin.settings.cursorPrompt = value;
+						await this.plugin.saveSettings();
+					});
+
+				// Make the text area wider
+				textarea.inputEl.style.width = "25em";
+				textarea.inputEl.style.height = "10em";
+
+			});
+
 	}
 }

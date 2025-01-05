@@ -1,7 +1,7 @@
 // main.ts
 import { Plugin, MarkdownView, App } from "obsidian";
 import { EditorView } from "@codemirror/view";
-import { MyPluginSettings, DEFAULT_SETTINGS, MyPluginSettingTab } from "./settings";
+import { InlineAISettings, DEFAULT_SETTINGS, MyPluginSettingTab } from "./settings";
 import { commandEffect, FloatingTooltipExtension } from "./modules/WidgetExtension";
 import { ChatApiManager } from "./api";
 import { generatedResponseState } from "./modules/AIExtension";
@@ -9,7 +9,7 @@ import { buildSelectionHiglightState, currentSelectionState, setSelectionInfoEff
 import { diffExtension } from "./modules/diffExtension";
 
 export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings = DEFAULT_SETTINGS;
+	settings: InlineAISettings = DEFAULT_SETTINGS;
 
 	async onload() {
 		await this.loadSettings();

@@ -2,8 +2,8 @@
 import { ChatOpenAI } from "@langchain/openai";
 import { ChatOllama } from "@langchain/ollama";
 import { SystemMessage, HumanMessage, AIMessage } from "@langchain/core/messages";
-import { MyPluginSettings } from "./settings";
-import { App, MarkdownView } from "obsidian";
+import { InlineAISettings } from "./settings";
+import { App, MarkdownView, Notice } from "obsidian";
 import { EditorView } from "@codemirror/view";
 import { setGeneratedResponseEffect } from "./modules/AIExtension";
 
@@ -18,7 +18,7 @@ export class ChatApiManager {
    * Initializes the ChatApiManager with the given settings.
    * @param settings - Configuration settings for the chat API.
    */
-  constructor(private settings: MyPluginSettings, app: App) {
+  constructor(private settings: InlineAISettings, app: App) {
     this.app = app;
     this.chatClient = this.initializeChatClient(settings);
   }
@@ -29,26 +29,32 @@ export class ChatApiManager {
    * @returns An instance of ChatOpenAI or ChatOllama.
    * @throws Error if the provider is unsupported or required settings are missing.
    */
-  private initializeChatClient(settings: MyPluginSettings): ChatOpenAI | ChatOllama {
-    switch (settings.provider) {
-      case "openai":
-        if (!settings.apiKey) {
-          throw new Error("OpenAI API key is required when using OpenAI as the provider.");
-        }
-        return new ChatOpenAI({
-          modelName: settings.model,
-          temperature: 0, // Set temperature to 0 for deterministic outputs
-          apiKey: settings.apiKey,
-        });
+  private initializeChatClient(settings: InlineAISettings): ChatOpenAI | ChatOllama {
+    try {
+      switch (settings.provider) {
+        case "openai":
+          if (!settings.apiKey) {
+            throw new Error("OpenAI API key is required when using OpenAI as the provider.");
+          }
+          return new ChatOpenAI({
+            modelName: settings.model,
+            temperature: 0, // Set temperature to 0 for deterministic outputs
+            apiKey: settings.apiKey,
+          });
 
-      case "ollama":
-        return new ChatOllama({
-          model: settings.model,
-          // Add other necessary configurations for Ollama if needed
-        });
+        case "ollama":
+          return new ChatOllama({
+            model: settings.model,
+            // Add other necessary configurations for Ollama if needed
+          });
 
-      default:
-        throw new Error(`Unsupported provider: ${settings.provider}`);
+        default:
+          throw new Error(`Unsupported provider: ${settings.provider}`);
+      }
+    } catch (error) {
+      console.error("Error initializing chat client:", error);
+      new Notice(`Failed to initialize chat client. ${error}`);
+      throw new Error("Failed to initialize chat client.");
     }
   }
 
