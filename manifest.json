@@ -1,7 +1,7 @@
 {
 	"id": "inlineAI",
 	"name": "InlineAI",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"minAppVersion": "0.15.0",
 	"description": "AI-powered suggestions, contextual edits, and advanced text transformations directly into your editor.",
 	"author": "Obsidian",
