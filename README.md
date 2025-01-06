@@ -1,96 +1,131 @@
-# Obsidian Sample Plugin
+<h1 align="center">InlineAI Plugin</h1>
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+<p align="center">
+  <a href="https://github.com/FBarrca/obsidian-inlineai/wiki">Documentation</a>
+  ·
+  <a href="https://github.com/FBarrca/obsidian-inlineai/issues">Report Bug</a>
+  ·
+  <a href="https://github.com/FBarrca/obsidian-inlineai/discussions">Discussions</a>
+</p>
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+![demo](docs/demo.gif)
 
-**Note:** The Obsidian API is still in early alpha and is subject to change at any time!
+---
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open Sample Modal" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and output 'click' to the console.
-- Registers a global interval which logs 'setInterval' to the console.
+> **💡 A Seamless AI Writing Experience in Obsidian**
+>
+> InlineAI enhances your workflow by integrating AI-powered suggestions, contextual edits, and advanced text transformations directly into your editor. Write faster, edit smarter, and unlock new creative possibilities—all within the Obsidian editor.
 
-## First time developing plugins?
+---
 
-Quick starting guide for new plugin devs:
+## 🌟 Features
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
-- Make changes to `main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+### **1. Context-Aware AI Assistance**
 
-## Releasing new releases
+- Transform text, summarize, or rewrite content using prompts tailored to your needs.
+- Define your own **system and transformation prompts** as commands for highly customized workflows.
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+### **2. Inline Diff Visualization**
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+- Visualize AI-suggested changes with clear inline markers for added and removed text.
+- Accept or discard suggestions with a single click.
 
-## Adding your plugin to the community plugin list
+### **3. Full AI Integration**
 
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
+- Supports **OpenAI**, **Ollama**, and other APIs.
+- Local model support for privacy-first workflows.
 
-## How to use
+---
 
-- Clone this repo.
-- Make sure your NodeJS is at least v16 (`node --version`).
-- `npm i` or `yarn` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
+## ⚙️ Installation
 
-## Manually installing the plugin
+### **1. From Obsidian Plugin Store**
 
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
+1. Open Obsidian Settings.
+2. Navigate to **Community Plugins** → **Browse**.
+3. Search for "InlineAI" and click **Install**.
+4. Enable the plugin in the Installed Plugins list.
 
-## Improve code quality with eslint (optional)
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code. 
-- To use eslint with this project, make sure to install eslint from terminal:
-  - `npm install -g eslint`
-- To use eslint to analyze this project use this command:
-  - `eslint main.ts`
-  - eslint will then create a report with suggestions for code improvement by file and line number.
-- If your source code is in a folder, such as `src`, you can use eslint with this command to analyze all files in that folder:
-  - `eslint .\src\`
+### **2. Manual Installation**
 
-## Funding URL
+1. Download the latest release from the [GitHub Releases](https://github.com/FBarrca/obsidian-inlineai/releases).
+2. Copy `main.js`, `styles.css`, and `manifest.json` into your vault's `.obsidian/plugins/obsidian-inlineai/` directory.
+3. Enable the plugin via the Community Plugins tab.
 
-You can include funding URLs where people who use your plugin can financially support it.
+---
 
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
+## 🚀 Getting Started
 
-```json
-{
-    "fundingUrl": "https://buymeacoffee.com"
-}
-```
+### Initial Setup
 
-If you have multiple URLs, you can also do:
+1. **Set up your API key**:
 
-```json
-{
-    "fundingUrl": {
-        "Buy Me a Coffee": "https://buymeacoffee.com",
-        "GitHub Sponsor": "https://github.com/sponsors",
-        "Patreon": "https://www.patreon.com/"
-    }
-}
-```
+   - Open the plugin settings in Obsidian.
+   - Enter your API key for OpenAI, Ollama, or any supported model provider.
+2. **Choose a model**:
 
-## API Documentation
+   - Supported models include `gpt-4`, `llama3.2`, and others.
+3. **Configure prompts**:
 
-See https://github.com/obsidianmd/obsidian-api
+   - Define system and transformation prompts in settings for customized interactions.
+
+### How to Use
+
+- **Trigger AI Tooltips**: Highlight text or place the cursor, then press `Ctrl + K` / `Cmd + K` to activate the tooltip(you can change the hotkey).
+- **Apply Edits**: Use the inline diff view to accept or discard AI-suggested changes.
+
+---
+
+---
+
+## 🔮 Roadmap
+
+InlineAI is actively evolving! Here’s what’s next:
+
+- **Tool use**: Save your commonly used tools as commands for easy use.
+
+Stay updated on our progress via the [GitHub Project Board](https://github.com/FBarrca/obsidian-inlineai/projects).
+
+---
+
+## 🙏 Feedback and Support
+
+We value your feedback and aim to make InlineAI the ultimate AI writing assistant:
+
+- **Bug Reports**: Submit issues on our [GitHub Issues](https://github.com/FBarrca/obsidian-inlineai/issues) page.
+- **Feature Requests**: Share ideas in the [Discussions](https://github.com/FBarrca/obsidian-inlineai/discussions) forum.
+- **Show Your Workflow**: Showcase your use cases in our [Community Showcase](https://github.com/FBarrca/obsidian-inlineai/discussions/categories/showcase).
+
+---
+
+## 🛠️ Development
+
+Want to contribute? Here’s how:
+
+1. Clone the repository:
+
+    ```bash
+
+    git clone https://github.com/FBarrca/obsidian-inlineai.git
+
+    ```
+2. Install dependencies:
+
+    ```bash
+
+    npm install
+
+    ```
+3. Build the plugin:
+
+    ```bash
+
+    npm run build
+
+    ```
+
+---
+
+## 📝 License
+
+This project is licensed under the [MIT License](LICENSE). Feel free to fork, contribute, and enhance the plugin!
