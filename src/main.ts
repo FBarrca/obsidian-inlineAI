@@ -56,10 +56,6 @@ export default class InlineAIChatPlugin extends Plugin {
 				}
 			},
 			hotkeys: [
-				{
-					modifiers: ["Mod"],
-					key: "Q",
-				},
 			],
 		});
 
