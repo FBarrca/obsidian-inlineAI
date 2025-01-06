@@ -1,11 +1,11 @@
 {
 	"id": "inlineAI",
 	"name": "InlineAI",
-	"version": "0.0.2",
+	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "Demonstrates some of the capabilities of the Obsidian API.",
+	"description": "AI-powered suggestions, contextual edits, and advanced text transformations directly into your editor.",
 	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
+	"authorUrl": "https://github.com/FBarrca/",
+	"fundingUrl": "https://www.buymeacoffee.com/FBarrCa",
 	"isDesktopOnly": false
 }
