@@ -58,7 +58,7 @@ export default class MyPlugin extends Plugin {
 			hotkeys: [
 				{
 					modifiers: ["Mod"],
-					key: "K",
+					key: "Q",
 				},
 			],
 		});
