@@ -64,12 +64,6 @@ function generateDiffView(state: EditorState): DecorationSet {
         const aiText: string = response?.airesponse ?? "";
         const contextText: string = context?.text ?? "";
 
-        // Debugging: Remove or conditionally enable in production
-        console.debug("Generating diff view", {
-            aiResponse: response,
-            contextText: context,
-        });
-
         // Use diff_match_patch instead of diffWords
         const dmp = new DiffMatchPatch();
         let diffs = dmp.diff_main(contextText, aiText);
