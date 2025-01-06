@@ -22,7 +22,7 @@ export const DEFAULT_SETTINGS: InlineAISettings = {
 };
 
 // Settings tab class to display settings in Obsidian UI
-export class MyPluginSettingTab extends PluginSettingTab {
+export class InlineAISettingsTab extends PluginSettingTab {
 	plugin: MyPlugin;
 
 	constructor(app: App, plugin: MyPlugin) {
@@ -34,7 +34,7 @@ export class MyPluginSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		
+
 
 		// Provider setting
 		new Setting(containerEl)
