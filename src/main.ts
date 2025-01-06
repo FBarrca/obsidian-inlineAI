@@ -5,7 +5,7 @@ import { InlineAISettings, DEFAULT_SETTINGS, InlineAISettingsTab } from "./setti
 import { commandEffect, FloatingTooltipExtension } from "./modules/WidgetExtension";
 import { ChatApiManager } from "./api";
 import { generatedResponseState } from "./modules/AIExtension";
-import { buildSelectionHiglightState, currentSelectionState, setSelectionInfoEffect } from "./modules/SelectionSate";
+import { buildSelectionHiglightState, currentSelectionState, setSelectionInfoEffect } from "./modules/SelectionState";
 import { diffExtension } from "./modules/diffExtension";
 
 export default class InlineAIChatPlugin extends Plugin {

@@ -16,7 +16,7 @@ import {
 import { setIcon } from "obsidian";
 import { ChatApiManager } from "../api";
 
-import { currentSelectionState, SelectionInfo } from "./SelectionSate";
+import { currentSelectionState, SelectionInfo } from "./SelectionState";
 
 // Some existing exports
 export const commandEffect = StateEffect.define<null>();

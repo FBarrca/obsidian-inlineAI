@@ -16,7 +16,7 @@ import DiffMatchPatch from "diff-match-patch";
 
 import { acceptTooltipEffect, dismissTooltipEffect } from "./WidgetExtension";
 import { generatedResponseState, setGeneratedResponseEffect } from "./AIExtension";
-import { currentSelectionState } from "./SelectionSate";
+import { currentSelectionState } from "./SelectionState";
 
 /**
  * Widget to display added or removed content.
