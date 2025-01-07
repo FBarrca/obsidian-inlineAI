@@ -111,3 +111,9 @@
 .tooltip-button:hover {
 	opacity: 0.8;
 }
+
+/* Style for the advanced text areas */
+.wide-text-settings {
+	width: 25em;
+	height: 10em;
+}

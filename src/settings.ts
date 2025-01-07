@@ -1,4 +1,3 @@
-// MyPluginSettings.ts
 import { App, PluginSettingTab, Setting } from "obsidian";
 import MyPlugin from "./main";
 import { cursorPrompt, selectionPrompt } from "./default_prompts";
@@ -33,8 +32,6 @@ export class InlineAISettingsTab extends PluginSettingTab {
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
-
-
 
 		// Provider setting
 		new Setting(containerEl)
@@ -86,6 +83,7 @@ export class InlineAISettingsTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Advanced")
 			.setHeading();
+
 		// Selection Prompt setting
 		new Setting(containerEl)
 			.setName("Selection Prompt")
@@ -99,10 +97,8 @@ export class InlineAISettingsTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					});
 
-				// Make the text area wider
-				textarea.inputEl.style.width = "25em";
-				textarea.inputEl.style.height = "10em";
-
+				// Add a CSS class for styling
+				textarea.inputEl.classList.add("wide-text-settings");
 			});
 
 		// Cursor Prompt setting
@@ -118,11 +114,8 @@ export class InlineAISettingsTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					});
 
-				// Make the text area wider
-				textarea.inputEl.style.width = "25em";
-				textarea.inputEl.style.height = "10em";
-
+				// Add a CSS class for styling
+				textarea.inputEl.classList.add("wide-text-settings");
 			});
-
 	}
 }
