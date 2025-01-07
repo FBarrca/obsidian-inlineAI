@@ -95,6 +95,13 @@ class FloatingWidget extends WidgetType {
     public override destroy(): void {
         this.textFieldView?.destroy();
         this.innerDom.empty();
+
+        this.submitButton.remove();
+        this.loaderElement.remove();
+
+        if (this.acceptButton) this.acceptButton.remove();
+        if (this.discardButton) this.discardButton.remove();
+
         this.textFieldView = undefined;
         this.outerEditorView = null;
     }
@@ -152,7 +159,8 @@ class FloatingWidget extends WidgetType {
     }
 
     private createLoader() {
-        this.loaderElement = this.innerDom.createEl("div", { cls: "loader", attr: { style: "display: none;" } });
+        this.loaderElement = this.innerDom.createEl("div", { cls: "loader" });
+        this.toggleLoading(false);
     }
 
     /**
@@ -192,8 +200,13 @@ class FloatingWidget extends WidgetType {
      * @param isLoading - Whether to show the loader.
      */
     private toggleLoading(isLoading: boolean) {
-        this.submitButton.style.display = isLoading ? "none" : "flex";
-        this.loaderElement.style.display = isLoading ? "flex" : "none";
+        if (isLoading) {
+            this.submitButton.classList.add("hidden");
+            this.loaderElement.classList.remove("hidden");
+        } else {
+            this.submitButton.classList.remove("hidden");
+            this.loaderElement.classList.add("hidden");
+        }
     }
 
 
@@ -201,7 +214,7 @@ class FloatingWidget extends WidgetType {
      * Transitions the widget to show Accept, Discard, and Reload buttons.
      */
     private showActionButtons() {
-        this.submitButton.style.display = "none";
+        this.submitButton.classList.add("hidden");
         this.createAcceptButton();
         this.createDiscardButton();
     }

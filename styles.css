@@ -65,6 +65,15 @@
 	background: var(--background-primary);
 	animation: l5 1s infinite linear alternate;
 	margin: 0 20px 0 26px;
+	display: flex;
+}
+.loader.hidden {
+	visibility: hidden;
+	opacity: 0;
+}
+
+.hidden {
+	display: none;
 }
 
 @keyframes l5 {
