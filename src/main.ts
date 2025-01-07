@@ -2,7 +2,7 @@
 import { Plugin, MarkdownView, App } from "obsidian";
 import { EditorView } from "@codemirror/view";
 import { InlineAISettings, DEFAULT_SETTINGS, InlineAISettingsTab } from "./settings";
-import { commandEffect, FloatingTooltipExtension } from "./modules/WidgetExtension";
+import { acceptTooltipEffect, commandEffect, dismissTooltipEffect, FloatingTooltipExtension } from "./modules/WidgetExtension";
 import { ChatApiManager } from "./api";
 import { generatedResponseState } from "./modules/AIExtension";
 import { buildSelectionHiglightState, currentSelectionState, setSelectionInfoEffect } from "./modules/SelectionState";
@@ -58,7 +58,44 @@ export default class InlineAIChatPlugin extends Plugin {
 			hotkeys: [
 			],
 		});
+		this.addCommand({
+			id: "accept-tooltip",
+			name: "Accept Tooltip suggestion",
+			callback: () => {
+				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
+				if (markdownView) {
+					const cmEditor = (markdownView.editor as any).cm as EditorView;
 
+					const response = cmEditor.state.field(generatedResponseState, false);
+					if (response) {
+						cmEditor.dispatch({
+							effects: acceptTooltipEffect.of(null),
+						});
+						cmEditor.dispatch({
+							effects: dismissTooltipEffect.of(null),
+						});
+					}
+				}
+			}
+
+		});
+		this.addCommand({
+			id: "discard-tooltip",
+			name: "discard Tooltip suggestion",
+			callback: () => {
+				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
+				if (markdownView) {
+					const cmEditor = (markdownView.editor as any).cm as EditorView;
+					const response = cmEditor.state.field(generatedResponseState, false);
+					if (response) {
+						cmEditor.dispatch({
+							effects: dismissTooltipEffect.of(null),
+						});
+					}
+				}
+			}
+
+		});
 
 		// Add settings tab
 		this.addSettingTab(new InlineAISettingsTab(this.app, this));
