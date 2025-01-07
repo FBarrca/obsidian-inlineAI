@@ -29,8 +29,8 @@ class FloatingWidget extends WidgetType {
 
     private outerEditorView: EditorView | null = null;
 
-    private dom = document.createElement("div");
-    private innerDom = document.createElement("div");
+    private dom: HTMLElement;
+    private innerDom: HTMLElement;
 
     private textFieldView?: EditorView;
     // Primary Action Buttons
@@ -45,17 +45,14 @@ class FloatingWidget extends WidgetType {
         super();
         this.chatApiManager = chatApiManager;
         this.selectionInfo = selectionInfo;
-        this.dom.className = "cm-cursor-overlay";
-        this.dom.style.userSelect = "none";
-        this.innerDom.className = "cm-cursor-overlay-inner";
-        this.dom.appendChild(this.innerDom);
+
+        // Create main DOM structure using createEl
+        this.dom = createEl("div", { cls: "cm-cursor-overlay", attr: { style: "user-select: none;" } });
+        this.innerDom = this.dom.createEl("div", { cls: "cm-cursor-overlay-inner" });
     }
 
     /**
-     * IMPORTANT:
      * Overriding toDOM(view: EditorView) instead of just toDOM().
-     * This gives us a reference to the **outer** EditorView that
-     * is rendering this widget decoration.
      */
     public override toDOM(view: EditorView): HTMLElement {
         // Capture the outer EditorView
@@ -97,7 +94,7 @@ class FloatingWidget extends WidgetType {
 
     public override destroy(): void {
         this.textFieldView?.destroy();
-        this.innerDom.innerHTML = "";
+        this.innerDom.empty();
         this.textFieldView = undefined;
         this.outerEditorView = null;
     }
@@ -113,18 +110,13 @@ class FloatingWidget extends WidgetType {
 
     private createPencilIcon() {
         if (!this.innerDom.querySelector(".cm-pencil-icon")) {
-            const icon = document.createElement("div");
-            icon.className = "cm-pencil-icon";
-            this.innerDom.appendChild(icon);
+            const icon = this.innerDom.createEl("div", { cls: "cm-pencil-icon" });
             setIcon(icon, "pencil");
         }
     }
 
     private createInputField() {
-        const editorDom = document.createElement("div");
-        editorDom.className = "cm-tooltip-editor";
-        editorDom.style.userSelect = "text";
-        this.innerDom.appendChild(editorDom);
+        const editorDom = this.innerDom.createEl("div", { cls: "cm-tooltip-editor", attr: { style: "user-select: text;" } });
 
         this.textFieldView = new EditorView({
             state: EditorState.create({
@@ -148,22 +140,19 @@ class FloatingWidget extends WidgetType {
     }
 
     private createSubmitButton() {
-        this.submitButton = document.createElement("button");
-        this.submitButton.textContent = "Submit";
-        this.submitButton.className = "submit-button tooltip-button";
+        this.submitButton = this.innerDom.createEl("button", {
+            cls: "submit-button tooltip-button",
+            text: "Submit",
+        });
         setIcon(this.submitButton, "send-horizontal");
 
         this.submitButton.onclick = () => {
             this.submitAction();
         };
-        this.innerDom.appendChild(this.submitButton);
     }
 
     private createLoader() {
-        this.loaderElement = document.createElement("div");
-        this.loaderElement.className = "loader";
-        this.loaderElement.style.display = "none";
-        this.innerDom.appendChild(this.loaderElement);
+        this.loaderElement = this.innerDom.createEl("div", { cls: "loader", attr: { style: "display: none;" } });
     }
 
     /**
@@ -186,9 +175,6 @@ class FloatingWidget extends WidgetType {
         this.chatApiManager
             .callSelection(userPrompt, selectedText)
             .then((aiResponse) => {
-                // Optionally handle or display aiResponse
-                // For this implementation, we'll assume the AI response is handled via state effects
-                // and we'll transition to the action buttons stage.
                 this.showActionButtons();
             })
             .catch((error) => {
@@ -206,23 +192,16 @@ class FloatingWidget extends WidgetType {
      * @param isLoading - Whether to show the loader.
      */
     private toggleLoading(isLoading: boolean) {
-        if (isLoading) {
-            this.submitButton.style.display = "none";
-            this.loaderElement.style.display = "flex";
-        } else {
-            this.submitButton.style.display = "flex";
-            this.loaderElement.style.display = "none";
-        }
+        this.submitButton.style.display = isLoading ? "none" : "flex";
+        this.loaderElement.style.display = isLoading ? "flex" : "none";
     }
+
 
     /**
      * Transitions the widget to show Accept, Discard, and Reload buttons.
      */
     private showActionButtons() {
-        // Clear existing inner content
         this.submitButton.style.display = "none";
-
-        // Create Accept, Discard, and Reload buttons
         this.createAcceptButton();
         this.createDiscardButton();
     }
@@ -232,9 +211,10 @@ class FloatingWidget extends WidgetType {
      */
     private createAcceptButton() {
         if (!this.acceptButton) {
-            this.acceptButton = document.createElement("button");
-            this.acceptButton.textContent = "Accept";
-            this.acceptButton.className = "accept-button tooltip-button primary-action";
+            this.acceptButton = this.innerDom.createEl("button", {
+                cls: "accept-button tooltip-button primary-action",
+                text: "Accept",
+            });
             setIcon(this.acceptButton, "check");
 
             this.acceptButton.onclick = () => {
@@ -250,9 +230,10 @@ class FloatingWidget extends WidgetType {
      */
     private createDiscardButton() {
         if (!this.discardButton) {
-            this.discardButton = document.createElement("button");
-            this.discardButton.textContent = "Discard";
-            this.discardButton.className = "discard-button tooltip-button";
+            this.discardButton = this.innerDom.createEl("button", {
+                cls: "discard-button tooltip-button",
+                text: "Discard",
+            });
             setIcon(this.discardButton, "cross");
 
             this.discardButton.onclick = () => {
@@ -277,35 +258,27 @@ class FloatingWidget extends WidgetType {
         this.dismissTooltip();
     }
 
-
     private discardAction() {
         this.dismissTooltip();
     }
-
 }
 
 /**
  * Build decorations for the first non-empty selection range.
- * Also obtains the entire selection info from the state
- * and passes it to the CursorOverlayWidget constructor.
  */
 function renderFloatingWidget(
     state: EditorState,
     chatApiManager: ChatApiManager
 ): DecorationSet {
-    // If there's no actual selection, use the cursor position
     const firstSelectedRange = state.selection.ranges.find((range) => !range.empty) ?? state.selection.main;
 
-    // Get the entire SelectionInfo (which includes the text)
     const selectionInfo = state.field(currentSelectionState, false) ?? null;
 
-    // Create the widget decoration at the selection start (or end)
     const deco = Decoration.widget({
         widget: new FloatingWidget(chatApiManager, selectionInfo),
         above: true,
         inline: true,
         side: -9999,
-
     }).range(firstSelectedRange.from);
 
     return Decoration.set([deco]);
