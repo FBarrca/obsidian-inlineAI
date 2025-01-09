@@ -55,7 +55,7 @@ export class ChatApiManager {
       }
     } catch (error) {
       console.error("Error initializing chat client:", error);
-      new Notice(`Failed to initialize chat client. ${error}`);
+      new Notice(`Error initializing chat client: ${error}`);
       throw new Error("Failed to initialize chat client.");
     }
   }
@@ -78,6 +78,7 @@ export class ChatApiManager {
       return aiMessage.content.toString();
     } catch (error) {
       console.error("Error calling the chat model:", error);
+      new Notice(`Error calling the chat model: ${error}`);
       throw new Error("Failed to generate response from the chat model.");
     }
   }
@@ -91,6 +92,7 @@ export class ChatApiManager {
   private async handleEditorUpdate(systemPrompt: string, userRequest: string): Promise<string> {
     try {
       const response = await this.callApi(systemPrompt, userRequest);
+
       const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
 
       if (!markdownView) return "";
@@ -103,6 +105,7 @@ export class ChatApiManager {
       return response;
     } catch (error) {
       console.error("Error processing request:", error);
+      new Notice(`Error processing request: ${error}`);
       throw new Error("Failed to process request.");
     }
   }
@@ -129,7 +132,7 @@ export class ChatApiManager {
 
 
     const systemPrompt = isCursor ? this.settings.cursorPrompt : this.settings.selectionPrompt;
-    let userPrompt = ``
+    let userPrompt = ``;
     if (isCursor) {
       userPrompt = `
       **Task:** ${prompt}  
