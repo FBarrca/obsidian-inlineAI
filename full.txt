@@ -1,0 +1,1071 @@
+The following text is a Git repository with code. The structure of the text are sections that begin with ----, followed by a single line containing the file path and file name, followed by a variable amount of lines containing the file contents. The text representing the Git repository ends when the symbols --END-- are encounted. Any further text beyond --END-- are meant to be interpreted as instructions using the aforementioned Git repository as context.
+----
+api.ts
+// api.ts
+import { ChatOpenAI } from "@langchain/openai";
+import { ChatOllama } from "@langchain/ollama";
+import { SystemMessage, HumanMessage, AIMessage } from "@langchain/core/messages";
+import { InlineAISettings } from "./settings";
+import { App, MarkdownView, Notice } from "obsidian";
+import { EditorView } from "@codemirror/view";
+import { setGeneratedResponseEffect } from "./modules/AIExtension";
+
+/**
+ * Class to manage interactions with different chat APIs.
+ */
+export class ChatApiManager {
+  private chatClient: ChatOpenAI | ChatOllama;
+  private app: App;
+  private settings: InlineAISettings;
+
+  /**
+   * Initializes the ChatApiManager with the given settings.
+   * @param settings - Configuration settings for the chat API.
+   */
+  constructor(settings: InlineAISettings, app: App) {
+    this.app = app;
+    this.chatClient = this.initializeChatClient(settings);
+    this.settings = settings;
+  }
+
+  /**
+   * Initializes the appropriate chat client based on the provider specified in settings.
+   * @param settings - Configuration settings for the chat API.
+   * @returns An instance of ChatOpenAI or ChatOllama.
+   * @throws Error if the provider is unsupported or required settings are missing.
+   */
+  private initializeChatClient(settings: InlineAISettings): ChatOpenAI | ChatOllama {
+    try {
+      switch (settings.provider) {
+        case "openai":
+          if (!settings.apiKey) {
+            throw new Error("OpenAI API key is required when using OpenAI as the provider.");
+          }
+          return new ChatOpenAI({
+            modelName: settings.model,
+            temperature: 0, // Set temperature to 0 for deterministic outputs
+            apiKey: settings.apiKey,
+          });
+
+        case "ollama":
+          return new ChatOllama({
+            model: settings.model,
+            // Add other necessary configurations for Ollama if needed
+          });
+
+        default:
+          throw new Error(`Unsupported provider: ${settings.provider}`);
+      }
+    } catch (error) {
+      console.error("Error initializing chat client:", error);
+      new Notice(`Failed to initialize chat client. ${error}`);
+      throw new Error("Failed to initialize chat client.");
+    }
+  }
+
+  /**
+   * Calls the chat API with the provided content and context.
+   * @param systemMessage - The system message to send to the chat API.
+   * @param message - The user's message to send to the chat API.
+   * @returns A promise that resolves with the generated content.
+   * @throws Error if the API call fails.
+   */
+  public async callApi(systemMessage: string, message: string): Promise<string> {
+    const messages = [
+      new SystemMessage(systemMessage),
+      new HumanMessage(message),
+    ];
+
+    try {
+      const aiMessage: AIMessage = await this.chatClient.invoke(messages);
+      return aiMessage.content.toString();
+    } catch (error) {
+      console.error("Error calling the chat model:", error);
+      throw new Error("Failed to generate response from the chat model.");
+    }
+  }
+
+  /**
+   * Handles user input and updates the editor with the response.
+   * @param systemPrompt - The system prompt to send to the chat API.
+   * @param userRequest - The user's request to process.
+   * @returns The AI-generated response.
+   */
+  private async handleEditorUpdate(systemPrompt: string, userRequest: string): Promise<string> {
+    try {
+      const response = await this.callApi(systemPrompt, userRequest);
+      const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
+
+      if (!markdownView) return "";
+
+      const mainEditorView = (markdownView.editor as any).cm as EditorView;
+      mainEditorView?.dispatch({
+        effects: setGeneratedResponseEffect.of({ airesponse: response, prompt: userRequest }),
+      });
+
+      return response;
+    } catch (error) {
+      console.error("Error processing request:", error);
+      throw new Error("Failed to process request.");
+    }
+  }
+
+  /**
+   * Handles user input and generates a response using the cursor API.
+   * @param userRequest - The user's request to process.
+   * @returns The AI-generated response.
+   */
+  public async callCursor(userRequest: string): Promise<string> {
+    const systemPrompt = "You are a helpful assistant. Please help the user with the following request:";
+    return this.handleEditorUpdate(systemPrompt, userRequest);
+  }
+
+  /**
+   * Processes selected text using the specified prompt and transformation.
+   * @param prompt - The transformation prompt (e.g., "Add Emojis").
+   * @param selectedText - The selected text to transform.
+   * @returns The transformed text.
+   */
+  public async callSelection(prompt: string, selectedText: string): Promise<string> {
+    let isCursor = false;
+    if (selectedText.trim().length === 0) { isCursor = true; }
+
+
+    const systemPrompt = isCursor ? this.settings.cursorPrompt : this.settings.selectionPrompt;
+    let userPrompt = ``
+    if (isCursor) {
+      userPrompt = `
+      **Task:** ${prompt}  
+      **Output:**`;
+    } else {
+      userPrompt = `
+      **Task:** ${prompt}  
+      **Input:**  
+      ${selectedText}
+
+      **Output:**`;
+    }
+
+    return this.handleEditorUpdate(systemPrompt, userPrompt);
+  }
+}
+
+----
+default_prompts.ts
+export const selectionPrompt = `
+You are an advanced language model that performs text transformations based on specific instructions. Your task is to process input text to produce the desired output based on a given transformation type. You can handle tasks like adding emojis, making text longer or shorter, and converting text into tables, among many others. Use **Obsidian-flavored markdown** in all your transformations when applicable. Follow the examples provided to guide your responses. 
+
+It is **very important** that you follow the examples. Do not add anything at the start of the output like "Output:" or "Here's a rephrased version of the input text:" or anything similar. Just provide the transformed text.
+
+**Examples:**
+
+---
+
+**Task:** Add Emojis.  
+**Prompt:** Add relevant emojis to make the text more engaging.  
+
+**Input:**  
+"Let's celebrate the success of our project."  
+
+**Output:**  
+"🎉 Let's celebrate the success of our project! 🚀�"  
+
+---
+
+**Task:** Convert to Table.  
+**Prompt:** Convert the text into an Obsidian table format.  
+
+**Input:**  
+"Name: John, Age: 30, Profession: Engineer"  
+
+**Output:**  
+| Name  | Age | Profession   |
+|-------|-----|-------------|
+| John  | 30  | Engineer|
+
+---
+`
+
+export const cursorPrompt = `
+You are an advanced language model specialized in following specific instructions to create and process markdown documents. Always use **Obsidian-flavored Markdown** syntax in your responses whenever applicable.
+
+## Examples:
+
+**Prompt:** Create a note titled "Daily Goals" with a list of tasks.  
+**Output:**  
+# Daily Goals  
+- [ ] Task 1: Complete the project proposal  
+- [ ] Task 2: Attend team meeting  
+- [ ] Task 3: Review budget plan  
+
+---
+
+**Prompt:** Generate a note about "Meeting Notes" with a table summarizing the key points.  
+**Output:**  
+# Meeting Notes  
+
+| Topic          | Discussion Summary           | Action Items           |  
+|-----------------|------------------------------|------------------------|  
+| Project Update | Discussed project milestones | Update Gantt chart     |  
+| Budget Review  | Reviewed proposed budget     | Finalize budget draft  |  
+
+---
+
+**Prompt:** Create a note titled "Books to Read" with headings for different genres and a list of book titles under each genre.  
+**Output:**  
+# Books to Read  
+
+## Fiction  
+- *Dune* by Frank Herbert  
+- *1984* by George Orwell  
+
+## Non-Fiction  
+- *Sapiens* by Yuval Noah Harari  
+- *Educated* by Tara Westover  
+
+## Science  
+- *A Brief History of Time* by Stephen Hawking  
+- *The Selfish Gene* by Richard Dawkins  
+
+---
+
+Follow this structure and style for all responses, adapting to the specific **Prompt** provided.`;
+
+----
+main.ts
+// main.ts
+import { Plugin, MarkdownView, App } from "obsidian";
+import { EditorView } from "@codemirror/view";
+import { InlineAISettings, DEFAULT_SETTINGS, InlineAISettingsTab } from "./settings";
+import { commandEffect, FloatingTooltipExtension } from "./modules/WidgetExtension";
+import { ChatApiManager } from "./api";
+import { generatedResponseState } from "./modules/AIExtension";
+import { buildSelectionHiglightState, currentSelectionState, setSelectionInfoEffect } from "./modules/SelectionState";
+import { diffExtension } from "./modules/diffExtension";
+
+export default class InlineAIChatPlugin extends Plugin {
+	settings: InlineAISettings = DEFAULT_SETTINGS;
+
+	async onload() {
+		await this.loadSettings();
+		const chatapi = new ChatApiManager(this.settings, this.app);
+
+		this.registerEditorExtension([
+			FloatingTooltipExtension(chatapi),
+			generatedResponseState,
+			currentSelectionState,
+			buildSelectionHiglightState,
+			diffExtension
+
+		]);
+
+		// Add command to show tooltip
+		this.addCommand({
+			id: "show-cursor-tooltip",
+			name: "Show Cursor Tooltip",
+			callback: () => {
+				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
+				if (markdownView) {
+					const cmEditor = (markdownView.editor as any).cm as EditorView;
+
+					// Grab the main selection range
+					const { from, to } = cmEditor.state.selection.main;
+					const effects = [];
+
+					if (from !== to) {
+						// If there is a real selection, store it
+						const selectedText = cmEditor.state.doc.sliceString(from, to);
+						effects.push(
+							setSelectionInfoEffect.of({ from, to, text: selectedText })
+						);
+					} else {
+						// If no selection, you could clear it or do nothing
+						effects.push(setSelectionInfoEffect.of(null));
+					}
+
+					// Also trigger the overlay
+					effects.push(commandEffect.of(null));
+
+					// Dispatch all effects in one go
+					cmEditor.dispatch({ effects });
+				}
+			},
+			hotkeys: [
+			],
+		});
+
+
+		// Add settings tab
+		this.addSettingTab(new InlineAISettingsTab(this.app, this));
+	}
+
+	onunload() {
+		// Cleanup if necessary
+	}
+
+	async loadSettings() {
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+	}
+
+	async saveSettings() {
+		await this.saveData(this.settings);
+	}
+}
+
+----
+settings.ts
+import { App, PluginSettingTab, Setting } from "obsidian";
+import MyPlugin from "./main";
+import { cursorPrompt, selectionPrompt } from "./default_prompts";
+
+// Interface for the settings
+export interface InlineAISettings {
+	provider: "openai" | "ollama";
+	model: string;
+	apiKey?: string;
+	selectionPrompt: string;
+	cursorPrompt: string;
+}
+
+// Default settings values
+export const DEFAULT_SETTINGS: InlineAISettings = {
+	provider: "ollama",
+	model: "llama3.2",
+	apiKey: "",
+	selectionPrompt: selectionPrompt,
+	cursorPrompt: cursorPrompt,
+};
+
+// Settings tab class to display settings in Obsidian UI
+export class InlineAISettingsTab extends PluginSettingTab {
+	plugin: MyPlugin;
+
+	constructor(app: App, plugin: MyPlugin) {
+		super(app, plugin);
+		this.plugin = plugin;
+	}
+
+	display(): void {
+		const { containerEl } = this;
+		containerEl.empty();
+
+		// Provider setting
+		new Setting(containerEl)
+			.setName("Provider")
+			.setDesc("Choose between OpenAI or Ollama as your provider.")
+			.addDropdown(dropdown =>
+				dropdown
+					.addOption("openai", "OpenAI")
+					.addOption("ollama", "Ollama")
+					.setValue(this.plugin.settings.provider)
+					.onChange(async (value) => {
+						this.plugin.settings.provider = value as "openai" | "ollama";
+						await this.plugin.saveSettings();
+						this.display(); // Refresh to update the API key field visibility
+					})
+			);
+
+		// Model setting
+		new Setting(containerEl)
+			.setName("Model")
+			.setDesc("Specify the model to use.")
+			.addText(text =>
+				text
+					.setPlaceholder("e.g., text-davinci-003")
+					.setValue(this.plugin.settings.model)
+					.onChange(async (value) => {
+						this.plugin.settings.model = value;
+						await this.plugin.saveSettings();
+					})
+			);
+
+		// API Key setting (only for OpenAI)
+		if (this.plugin.settings.provider === "openai") {
+			new Setting(containerEl)
+				.setName("OpenAI API Key")
+				.setDesc("Enter your OpenAI API key.")
+				.addText(text =>
+					text
+						.setPlaceholder("sk-...")
+						.setValue(this.plugin.settings.apiKey || "")
+						.onChange(async (value) => {
+							this.plugin.settings.apiKey = value;
+							await this.plugin.saveSettings();
+						})
+				);
+		}
+
+		// Advanced Section
+		new Setting(containerEl)
+			.setName("Advanced")
+			.setHeading();
+
+		// Selection Prompt setting
+		new Setting(containerEl)
+			.setName("Selection Prompt")
+			.setDesc("System Prompt used when the tooltip is triggered with selected text.")
+			.addTextArea((textarea) => {
+				textarea
+					.setPlaceholder("e.g., Summarize the selected text.")
+					.setValue(this.plugin.settings.selectionPrompt)
+					.onChange(async (value) => {
+						this.plugin.settings.selectionPrompt = value;
+						await this.plugin.saveSettings();
+					});
+
+				// Add a CSS class for styling
+				textarea.inputEl.classList.add("wide-text-settings");
+			});
+
+		// Cursor Prompt setting
+		new Setting(containerEl)
+			.setName("Cursor Prompt")
+			.setDesc("System Prompt used when the tooltip is triggered with selected text.")
+			.addTextArea((textarea) => {
+				textarea
+					.setPlaceholder("e.g., Generate text based on cursor position.")
+					.setValue(this.plugin.settings.cursorPrompt)
+					.onChange(async (value) => {
+						this.plugin.settings.cursorPrompt = value;
+						await this.plugin.saveSettings();
+					});
+
+				// Add a CSS class for styling
+				textarea.inputEl.classList.add("wide-text-settings");
+			});
+	}
+}
+
+----
+modules\AIExtension.ts
+import {
+    StateEffect,
+    StateField,
+} from "@codemirror/state";
+
+import { dismissTooltipEffect } from "./WidgetExtension";
+
+// Custom structure that has a airesponse and context fields
+export interface AIResponse {
+    airesponse: string;
+    prompt: string;
+}
+
+/**
+ * State Effect to set the AI response.
+ */
+export const setGeneratedResponseEffect = StateEffect.define<AIResponse | null>();
+
+// State field of type text to store the response from the API
+export const generatedResponseState = StateField.define<AIResponse | null>({
+    create() {
+        return null;
+    },
+    update(value, tr) {
+        // Check if the transaction contains an effect to set the response
+        if (tr.effects.some((e) => e.is(setGeneratedResponseEffect))) {
+            const effect = tr.effects.find((e) => e.is(setGeneratedResponseEffect));
+            return effect ? effect.value : value;
+        }
+        // if we geta dismmisTooltipEffect we should clear the response
+        if (tr.effects.some((e) => e.is(dismissTooltipEffect))) {
+            return null;
+        }
+        return value;
+    },
+});
+
+
+
+----
+modules\diffExtension.ts
+// modules/diffExtension.ts
+import {
+    EditorState,
+    StateField,
+    RangeSetBuilder,
+} from "@codemirror/state";
+import {
+    Decoration,
+    DecorationSet,
+    EditorView,
+    WidgetType,
+    ViewPlugin,
+    ViewUpdate,
+} from "@codemirror/view";
+import DiffMatchPatch from "diff-match-patch";
+
+import { acceptTooltipEffect, dismissTooltipEffect } from "./WidgetExtension";
+import { generatedResponseState, setGeneratedResponseEffect } from "./AIExtension";
+import { currentSelectionState } from "./SelectionState";
+
+/**
+ * Widget to display added or removed content.
+ * Improves accessibility by using appropriate ARIA attributes.
+ */
+class ChangeContentWidget extends WidgetType {
+    constructor(
+        private readonly content: string,
+        private readonly type: 'added' | 'removed'
+    ) {
+        super();
+    }
+
+    toDOM(): HTMLElement {
+        const wrapper = document.createElement("span");
+        wrapper.className = `cm-change-widget cm-change-${this.type}`;
+        wrapper.textContent = this.content;
+
+        // Accessibility: Provide ARIA label
+        wrapper.setAttribute(
+            "aria-label",
+            this.type === 'added' ? "Added content" : "Removed content"
+        );
+        return wrapper;
+    }
+
+    ignoreEvent(): boolean {
+        // Decide whether to ignore events on the widget
+        return false;
+    }
+}
+
+/**
+ * Generates a DecorationSet representing the diff between AI response and context,
+ * using diff_match_patch with semantic cleanup.
+ * @param state - The current editor state.
+ * @returns A DecorationSet with the appropriate widgets.
+ */
+function generateDiffView(state: EditorState): DecorationSet {
+    try {
+        // Retrieve the AI response and the current context text from the state
+        const response = state.field(generatedResponseState);
+        const context = state.field(currentSelectionState);
+
+        const aiText: string = response?.airesponse ?? "";
+        const contextText: string = context?.text ?? "";
+
+        // Use diff_match_patch instead of diffWords
+        const dmp = new DiffMatchPatch();
+        let diffs = dmp.diff_main(contextText, aiText);
+
+        // Perform semantic cleanup
+        dmp.diff_cleanupSemantic(diffs);
+
+        // Initialize RangeSetBuilder for efficient decoration construction
+        const builder = new RangeSetBuilder<Decoration>();
+        let currentPos = context?.from ?? 0;
+
+
+        diffs.forEach(([op, text]) => {
+            const length = text.length;
+
+            if (op === DiffMatchPatch.DIFF_INSERT) {
+                // AI text added
+                const widget = new ChangeContentWidget(text, "added");
+                builder.add(
+                    currentPos,
+                    currentPos,
+                    Decoration.widget({ widget, side: 1 })
+                );
+            } else if (op === DiffMatchPatch.DIFF_DELETE) {
+                // Context text removed
+                const widget = new ChangeContentWidget(text, "removed");
+                // Attach the widget over the removed range
+                builder.add(
+                    currentPos,
+                    currentPos + length,
+                    Decoration.widget({ widget, side: -1 })
+                );
+                currentPos += length;
+            } else {
+                // No change, move currentPos forward
+                currentPos += length;
+            }
+        });
+
+        return builder.finish();
+    } catch (error) {
+        console.error("Error generating diff view:", error);
+        return Decoration.none;
+    }
+}
+
+/**
+ * This function takes the current editor state and the view, and applies the AI-suggested changes.
+ *
+ * @param state - The current editor state.
+ * @param view - The EditorView instance.
+ */
+function dispatchAIChanges(state: EditorState, view: EditorView): void {
+    try {
+        // Grab the AI text and selection info (original context)
+        const response = state.field(generatedResponseState);
+        const context = state.field(currentSelectionState);
+
+        const aiText: string = response?.airesponse ?? "";
+        const selectionFrom = context?.from ?? 0;
+        const selectionTo = context?.to ?? 0;
+
+        // Dispatch the transaction to apply the AI changes
+        view.dispatch({
+            changes: { from: selectionFrom, to: selectionTo, insert: aiText },
+        });
+    } catch (error) {
+        console.error("Error applying diff changes:", error);
+    }
+}
+
+export const diffDecorationState = StateField.define<DecorationSet>({
+    create(): DecorationSet {
+        return Decoration.none;
+    },
+    update(decorations: DecorationSet, tr) {
+        // Check if we got the AI response effect
+        if (tr.effects.some(e => e.is(setGeneratedResponseEffect))) {
+            return generateDiffView(tr.state);
+        }
+
+        // Check if the dismiss tooltip effect is present
+        const hasDismissEffect = tr.effects.some(e => e.is(dismissTooltipEffect));
+        if (hasDismissEffect) {
+            return Decoration.none;
+        }
+
+        // Retain the existing decorations if no relevant changes
+        return decorations;
+    },
+    provide: (field) => EditorView.decorations.from(field),
+});
+
+/**
+ * Plugin to handle applying diff changes when the accept tooltip effect is triggered.
+ */
+const applyDiffPlugin = ViewPlugin.fromClass(class {
+    update(update: ViewUpdate) {
+        // Iterate through all transactions in the update
+        for (const transaction of update.transactions) {
+            for (const effect of transaction.effects) {
+                if (effect.is(acceptTooltipEffect)) {
+                    // Apply the diff changes by dispatching the transaction
+                    setTimeout(() => {
+                        dispatchAIChanges(update.state, update.view);
+                    }, 0);
+                }
+            }
+        }
+    }
+});
+
+/**
+ * Exported extension to be included in the EditorView.
+ */
+export const diffExtension = [
+    diffDecorationState,
+    applyDiffPlugin,
+];
+
+----
+modules\SelectionState.ts
+// modules/SelectionState.ts
+import { StateEffect, StateField } from "@codemirror/state";
+import { Decoration, DecorationSet } from "@codemirror/view";
+import { EditorView } from "@codemirror/view";
+import { dismissTooltipEffect } from "./WidgetExtension";
+
+/**
+ * Interface describing the selection range and text.
+ */
+export interface SelectionInfo {
+    from: number;
+    to: number;
+    text: string;
+}
+
+/**
+ * Effect used to set or clear the selection info.
+ */
+export const setSelectionInfoEffect = StateEffect.define<SelectionInfo | null>();
+
+/**
+ * Field that holds the most recently preserved selection info.
+ */
+export const currentSelectionState = StateField.define<SelectionInfo | null>({
+    create() {
+        return null;
+    },
+    update(value, tr) {
+        // Look for a setSelectionInfoEffect in this transaction
+        const effect = tr.effects.find(e => e.is(setSelectionInfoEffect));
+        if (effect) {
+            return effect.value;
+        } else if (tr.effects.some(e => e.is(dismissTooltipEffect))) {
+            return null;
+        }
+
+        return value;
+    },
+});
+
+/**
+ * Decoration to highlight the selected text.
+ */
+const highlightDecoration = Decoration.mark({
+    class: "cm-selectionBackground", // CSS class for highlighting
+});
+
+/**
+ * StateField that manages the decoration set for highlighting.
+ */
+export const buildSelectionHiglightState = StateField.define<DecorationSet>({
+    create(state) {
+        const info = state.field(currentSelectionState);
+        if (info) {
+            return Decoration.set([highlightDecoration.range(info.from, info.to)]);
+        }
+        return Decoration.none;
+    },
+    update(decos, tr) {
+        // Check if selectionInfoField has changed
+        const info = tr.state.field(currentSelectionState);
+        if (info) {
+            return Decoration.set([highlightDecoration.range(info.from, info.to)]);
+        }
+        return Decoration.none;
+    },
+    provide: f => EditorView.decorations.from(f),
+});
+
+----
+modules\WidgetExtension.ts
+// modules/WidgetExtension.ts
+import {
+    EditorState,
+    StateEffect,
+    StateField,
+} from "@codemirror/state";
+
+import {
+    EditorView,
+    Decoration,
+    DecorationSet,
+    WidgetType,
+    placeholder,
+    keymap,
+} from "@codemirror/view";
+import { setIcon } from "obsidian";
+import { ChatApiManager } from "../api";
+
+import { currentSelectionState, SelectionInfo } from "./SelectionState";
+
+// Some existing exports
+export const commandEffect = StateEffect.define<null>();
+export const dismissTooltipEffect = StateEffect.define<null>();
+export const acceptTooltipEffect = StateEffect.define<null>();
+
+class FloatingWidget extends WidgetType {
+    private chatApiManager: ChatApiManager;
+    private selectionInfo: SelectionInfo | null;
+
+    private outerEditorView: EditorView | null = null;
+
+    private dom: HTMLElement;
+    private innerDom: HTMLElement;
+
+    private textFieldView?: EditorView;
+    // Primary Action Buttons
+    private submitButton!: HTMLButtonElement;
+    private loaderElement!: HTMLElement;
+
+    //Secondary Action Buttons
+    private acceptButton!: HTMLButtonElement;
+    private discardButton!: HTMLButtonElement;
+
+    constructor(chatApiManager: ChatApiManager, selectionInfo: SelectionInfo | null) {
+        super();
+        this.chatApiManager = chatApiManager;
+        this.selectionInfo = selectionInfo;
+
+        // Create main DOM structure using createEl
+        this.dom = createEl("div", { cls: "cm-cursor-overlay", attr: { style: "user-select: none;" } });
+        this.innerDom = this.dom.createEl("div", { cls: "cm-cursor-overlay-inner" });
+    }
+
+    /**
+     * Overriding toDOM(view: EditorView) instead of just toDOM().
+     */
+    public override toDOM(view: EditorView): HTMLElement {
+        // Capture the outer EditorView
+        this.outerEditorView = view;
+
+        this.createPencilIcon();
+        this.createInputField();
+        this.createSubmitButton();
+        this.createLoader();
+
+        setTimeout(() => {
+            this.textFieldView?.focus();
+        }, 0);
+
+        // Setup "click outside" and "Escape" dismissal
+        const onClickOutside = (event: MouseEvent) => {
+            if (!this.dom.contains(event.target as Node)) {
+                this.dismissTooltip();
+            }
+        };
+
+        const onEscape = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                this.dismissTooltip();
+            }
+        };
+
+        document.addEventListener("mousedown", onClickOutside);
+        document.addEventListener("keydown", onEscape);
+
+        // Cleanup
+        this.dom.addEventListener("destroy", () => {
+            document.removeEventListener("mousedown", onClickOutside);
+            document.removeEventListener("keydown", onEscape);
+        });
+
+        return this.dom;
+    }
+
+    public override destroy(): void {
+        this.textFieldView?.destroy();
+        this.innerDom.empty();
+
+        this.submitButton.remove();
+        this.loaderElement.remove();
+
+        if (this.acceptButton) this.acceptButton.remove();
+        if (this.discardButton) this.discardButton.remove();
+
+        this.textFieldView = undefined;
+        this.outerEditorView = null;
+    }
+
+    private dismissTooltip() {
+        if (this.outerEditorView) {
+            this.outerEditorView.dispatch({
+                effects: dismissTooltipEffect.of(null),
+            });
+        }
+    }
+
+
+    private createPencilIcon() {
+        if (!this.innerDom.querySelector(".cm-pencil-icon")) {
+            const icon = this.innerDom.createEl("div", { cls: "cm-pencil-icon" });
+            setIcon(icon, "pencil");
+        }
+    }
+
+    private createInputField() {
+        const editorDom = this.innerDom.createEl("div", { cls: "cm-tooltip-editor", attr: { style: "user-select: text;" } });
+
+        this.textFieldView = new EditorView({
+            state: EditorState.create({
+                doc: "",
+                extensions: [
+                    placeholder("Ask copilot"),
+                    keymap.of([
+                        {
+                            key: "Enter",
+                            run: () => {
+                                this.submitAction();
+                                return true;
+                            },
+                            preventDefault: true,
+                        },
+                    ]),
+                ],
+            }),
+            parent: editorDom,
+        });
+    }
+
+    private createSubmitButton() {
+        this.submitButton = this.innerDom.createEl("button", {
+            cls: "submit-button tooltip-button",
+            text: "Submit",
+        });
+        setIcon(this.submitButton, "send-horizontal");
+
+        this.submitButton.onclick = () => {
+            this.submitAction();
+        };
+    }
+
+    private createLoader() {
+        this.loaderElement = this.innerDom.createEl("div", { cls: "loader" });
+        this.toggleLoading(false);
+    }
+
+    /**
+     * Handles the submit action by calling the AI with the user input and the selected text.
+     */
+    private submitAction() {
+        const userPrompt = this.textFieldView?.state.doc.toString() ?? "";
+
+        if (!userPrompt.trim()) {
+            console.warn("Empty input. Submission aborted.");
+            return;
+        }
+
+        // Grab the selected text from the stored selection info
+        const selectedText = this.selectionInfo?.text ?? "";
+
+        // Show loader
+        this.toggleLoading(true);
+
+        this.chatApiManager
+            .callSelection(userPrompt, selectedText)
+            .then((aiResponse) => {
+                this.showActionButtons();
+            })
+            .catch((error) => {
+                console.error("Error calling AI:", error);
+            })
+            .finally(() => {
+                // Hide loader
+                this.toggleLoading(false);
+            });
+
+    }
+
+    /**
+     * Toggles the visibility of the submit button and loader.
+     * @param isLoading - Whether to show the loader.
+     */
+    private toggleLoading(isLoading: boolean) {
+        if (isLoading) {
+            this.submitButton.classList.add("hidden");
+            this.loaderElement.classList.remove("hidden");
+        } else {
+            this.submitButton.classList.remove("hidden");
+            this.loaderElement.classList.add("hidden");
+        }
+    }
+
+
+    /**
+     * Transitions the widget to show Accept, Discard, and Reload buttons.
+     */
+    private showActionButtons() {
+        this.submitButton.classList.add("hidden");
+        this.createAcceptButton();
+        this.createDiscardButton();
+    }
+
+    /**
+     * Creates the Accept button.
+     */
+    private createAcceptButton() {
+        if (!this.acceptButton) {
+            this.acceptButton = this.innerDom.createEl("button", {
+                cls: "accept-button tooltip-button primary-action",
+                text: "Accept",
+            });
+            setIcon(this.acceptButton, "check");
+
+            this.acceptButton.onclick = () => {
+                this.acceptAction();
+            };
+
+            this.innerDom.appendChild(this.acceptButton);
+        }
+    }
+
+    /**
+     * Creates the Discard button.
+     */
+    private createDiscardButton() {
+        if (!this.discardButton) {
+            this.discardButton = this.innerDom.createEl("button", {
+                cls: "discard-button tooltip-button",
+                text: "Discard",
+            });
+            setIcon(this.discardButton, "cross");
+
+            this.discardButton.onclick = () => {
+                this.discardAction();
+            };
+
+            this.innerDom.appendChild(this.discardButton);
+        }
+    }
+
+
+    /**
+     * Handles the Accept action.
+     * Confirms the result, applies changes, and closes the tooltip.
+     */
+    private acceptAction() {
+        if (this.outerEditorView) {
+            this.outerEditorView.dispatch({
+                effects: acceptTooltipEffect.of(null),
+            });
+        }
+        this.dismissTooltip();
+    }
+
+    private discardAction() {
+        this.dismissTooltip();
+    }
+}
+
+/**
+ * Build decorations for the first non-empty selection range.
+ */
+function renderFloatingWidget(
+    state: EditorState,
+    chatApiManager: ChatApiManager
+): DecorationSet {
+    const firstSelectedRange = state.selection.ranges.find((range) => !range.empty) ?? state.selection.main;
+
+    const selectionInfo = state.field(currentSelectionState, false) ?? null;
+
+    const deco = Decoration.widget({
+        widget: new FloatingWidget(chatApiManager, selectionInfo),
+        above: true,
+        inline: true,
+        side: -9999,
+    }).range(firstSelectedRange.from);
+
+    return Decoration.set([deco]);
+}
+
+/**
+ * Defines the selection overlay field with access to ChatApiManager.
+ */
+function FloatingTooltipState(chatApiManager: ChatApiManager) {
+    return StateField.define<DecorationSet>({
+        create(state) {
+            return Decoration.none;
+        },
+        update(decorations, tr) {
+            // Recompute if the user triggers the command
+            if (tr.effects.some((e) => e.is(commandEffect))) {
+                return renderFloatingWidget(tr.state, chatApiManager);
+            }
+            // Or dismiss it
+            if (tr.effects.some((e) => e.is(dismissTooltipEffect))) {
+                return Decoration.none;
+            }
+            // Otherwise, return the existing overlay
+            return decorations;
+        },
+        provide: (field) => EditorView.decorations.from(field),
+    });
+}
+
+/**
+ * Extension enabling selection overlay widgets.
+ */
+export function FloatingTooltipExtension(chatApiManager: ChatApiManager) {
+    return [FloatingTooltipState(chatApiManager)];
+}
+
+--END--
