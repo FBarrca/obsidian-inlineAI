@@ -4,9 +4,10 @@ import { cursorPrompt, selectionPrompt } from "./default_prompts";
 
 // Interface for the settings
 export interface InlineAISettings {
-	provider: "openai" | "ollama";
+	provider: "openai" | "ollama" | "custom";
 	model: string;
 	apiKey?: string;
+	customURL?: string; // Add a custom URL field
 	selectionPrompt: string;
 	cursorPrompt: string;
 }
@@ -16,6 +17,7 @@ export const DEFAULT_SETTINGS: InlineAISettings = {
 	provider: "ollama",
 	model: "llama3.2",
 	apiKey: "",
+	customURL: "",
 	selectionPrompt: selectionPrompt,
 	cursorPrompt: cursorPrompt,
 };
@@ -36,14 +38,15 @@ export class InlineAISettingsTab extends PluginSettingTab {
 		// Provider setting
 		new Setting(containerEl)
 			.setName("Provider")
-			.setDesc("Choose between OpenAI or Ollama as your provider.")
-			.addDropdown(dropdown =>
+			.setDesc("Choose between OpenAI, Ollama, or a custom OpenAI-compatible endpoint.")
+			.addDropdown((dropdown) =>
 				dropdown
 					.addOption("openai", "OpenAI")
 					.addOption("ollama", "Ollama")
+					.addOption("custom", "Custom/OpenAI-compatible")
 					.setValue(this.plugin.settings.provider)
 					.onChange(async (value) => {
-						this.plugin.settings.provider = value as "openai" | "ollama";
+						this.plugin.settings.provider = value as "openai" | "ollama" | "custom";
 						await this.plugin.saveSettings();
 						this.display(); // Refresh to update the API key field visibility
 					})
@@ -55,7 +58,7 @@ export class InlineAISettingsTab extends PluginSettingTab {
 			.setDesc("Specify the model to use.")
 			.addText(text =>
 				text
-					.setPlaceholder("e.g., text-davinci-003")
+					.setPlaceholder("e.g., gpt-4o-mini")
 					.setValue(this.plugin.settings.model)
 					.onChange(async (value) => {
 						this.plugin.settings.model = value;
@@ -63,12 +66,14 @@ export class InlineAISettingsTab extends PluginSettingTab {
 					})
 			);
 
-		// API Key setting (only for OpenAI)
-		if (this.plugin.settings.provider === "openai") {
+		// API Key setting (conditionally displayed for OpenAI suported endpoints
+		if (this.plugin.settings.provider === "openai" || 
+			this.plugin.settings.provider === "custom"
+		) {
 			new Setting(containerEl)
-				.setName("OpenAI API Key")
-				.setDesc("Enter your OpenAI API key.")
-				.addText(text =>
+				.setName("API Key")
+				.setDesc("Enter your API key.")
+				.addText((text) =>
 					text
 						.setPlaceholder("sk-...")
 						.setValue(this.plugin.settings.apiKey || "")
@@ -77,6 +82,24 @@ export class InlineAISettingsTab extends PluginSettingTab {
 							await this.plugin.saveSettings();
 						})
 				);
+		}
+
+		/**
+		 * If the user chooses 'custom', show a field for the base endpoint URL.
+		 */
+		if (this.plugin.settings.provider === "custom") {
+			new Setting(containerEl)
+			.setName("Custom Endpoint")
+			.setDesc("Enter your OpenAI-compatible base URL (e.g. https://api.groq.com/openai/v1).")
+			.addText((text) =>
+				text
+				.setPlaceholder("https://api.mycustomhost.com/v1")
+				.setValue(this.plugin.settings.customURL || "")
+				.onChange(async (value) => {
+					this.plugin.settings.customURL = value;
+					await this.plugin.saveSettings();
+				})
+			);
 		}
 
 		// Advanced Section

@@ -50,6 +50,24 @@ export class ChatApiManager {
             // Add other necessary configurations for Ollama if needed
           });
 
+        case "custom":
+          if (!settings.apiKey) {
+            throw new Error("An API key is required for custom providers.");
+          }
+          if (!settings.customURL) {
+            throw new Error("A custom base URL is required for custom providers.");
+          }
+          // Use ChatOpenAI with configuration pointing to user’s custom URL
+          return new ChatOpenAI({
+            modelName: settings.model,
+            temperature: 0,
+            openAIApiKey: settings.apiKey,
+            // 'configuration.basePath' is the recognized property
+            configuration: {
+              baseURL: settings.customURL.trim(),
+            },
+          });
+
         default:
           throw new Error(`Unsupported provider: ${settings.provider}`);
       }
