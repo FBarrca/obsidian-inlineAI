@@ -4,7 +4,7 @@
 	"version": "1.0.5",
 	"minAppVersion": "0.15.0",
 	"description": "AI-powered suggestions, contextual edits, and advanced text transformations directly into your editor.",
-	"author": "Obsidian",
+	"author": "FBarrca",
 	"authorUrl": "https://github.com/FBarrca/",
 	"fundingUrl": "https://www.buymeacoffee.com/FBarrCa",
 	"isDesktopOnly": false
