@@ -27,7 +27,7 @@ export default class InlineAIChatPlugin extends Plugin {
 		// Add command to show tooltip
 		this.addCommand({
 			id: "show-cursor-tooltip",
-			name: "Show Cursor Tooltip",
+			name: "Show cursor tooltip",
 			callback: () => {
 				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
 				if (markdownView) {
@@ -60,7 +60,7 @@ export default class InlineAIChatPlugin extends Plugin {
 		});
 		this.addCommand({
 			id: "accept-tooltip",
-			name: "Accept Tooltip suggestion",
+			name: "Accept tooltip suggestion",
 			callback: () => {
 				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
 				if (markdownView) {
@@ -81,7 +81,7 @@ export default class InlineAIChatPlugin extends Plugin {
 		});
 		this.addCommand({
 			id: "discard-tooltip",
-			name: "discard Tooltip suggestion",
+			name: "Discard tooltip suggestion",
 			callback: () => {
 				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
 				if (markdownView) {

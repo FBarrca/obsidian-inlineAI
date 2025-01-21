@@ -71,7 +71,7 @@ export class InlineAISettingsTab extends PluginSettingTab {
 			this.plugin.settings.provider === "custom"
 		) {
 			new Setting(containerEl)
-				.setName("API Key")
+				.setName("API key")
 				.setDesc("Enter your API key.")
 				.addText((text) =>
 					text
@@ -89,7 +89,7 @@ export class InlineAISettingsTab extends PluginSettingTab {
 		 */
 		if (this.plugin.settings.provider === "custom") {
 			new Setting(containerEl)
-			.setName("Custom Endpoint")
+			.setName("Custom endpoint")
 			.setDesc("Enter your OpenAI-compatible base URL (e.g. https://api.groq.com/openai/v1).")
 			.addText((text) =>
 				text
@@ -109,7 +109,7 @@ export class InlineAISettingsTab extends PluginSettingTab {
 
 		// Selection Prompt setting
 		new Setting(containerEl)
-			.setName("Selection Prompt")
+			.setName("Selection prompt")
 			.setDesc("System Prompt used when the tooltip is triggered with selected text.")
 			.addTextArea((textarea) => {
 				textarea
@@ -126,7 +126,7 @@ export class InlineAISettingsTab extends PluginSettingTab {
 
 		// Cursor Prompt setting
 		new Setting(containerEl)
-			.setName("Cursor Prompt")
+			.setName("Cursor prompt")
 			.setDesc("System Prompt used when the tooltip is triggered with selected text.")
 			.addTextArea((textarea) => {
 				textarea
