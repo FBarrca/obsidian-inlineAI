@@ -10,7 +10,7 @@ import { diffExtension } from "./modules/diffExtension";
 
 export default class InlineAIChatPlugin extends Plugin {
 	settings: InlineAISettings = DEFAULT_SETTINGS;
-	chatapi: ChatApiManager;
+	chatapi!: ChatApiManager;
 
 	async onload() {
 		await this.loadSettings();
