@@ -166,4 +166,13 @@ export class ChatApiManager {
 
     return this.handleEditorUpdate(systemPrompt, userPrompt);
   }
+
+  /**
+   * Updates the manager's settings and reinitializes the chat client.
+   * @param settings - New configuration settings for the chat API.
+   */
+  public updateSettings(settings: InlineAISettings): void {
+    this.settings = settings;
+    this.chatClient = this.initializeChatClient(settings);
+  }
 }

@@ -48,6 +48,7 @@ export class InlineAISettingsTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						this.plugin.settings.provider = value as "openai" | "ollama" | "custom";
 						await this.plugin.saveSettings();
+						this.plugin.chatapi.updateSettings(this.plugin.settings);
 						this.display(); // Refresh to update the API key field visibility
 					})
 			);
@@ -63,6 +64,7 @@ export class InlineAISettingsTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						this.plugin.settings.model = value;
 						await this.plugin.saveSettings();
+						this.plugin.chatapi.updateSettings(this.plugin.settings);
 					})
 			);
 
@@ -80,6 +82,7 @@ export class InlineAISettingsTab extends PluginSettingTab {
 						.onChange(async (value) => {
 							this.plugin.settings.apiKey = value;
 							await this.plugin.saveSettings();
+							this.plugin.chatapi.updateSettings(this.plugin.settings);
 						})
 				);
 		}
@@ -98,6 +101,7 @@ export class InlineAISettingsTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.customURL = value;
 					await this.plugin.saveSettings();
+					this.plugin.chatapi.updateSettings(this.plugin.settings);
 				})
 			);
 		}
@@ -118,6 +122,7 @@ export class InlineAISettingsTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						this.plugin.settings.selectionPrompt = value;
 						await this.plugin.saveSettings();
+						this.plugin.chatapi.updateSettings(this.plugin.settings);
 					});
 
 				// Add a CSS class for styling
@@ -135,6 +140,7 @@ export class InlineAISettingsTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						this.plugin.settings.cursorPrompt = value;
 						await this.plugin.saveSettings();
+						this.plugin.chatapi.updateSettings(this.plugin.settings);
 					});
 
 				// Add a CSS class for styling

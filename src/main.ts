@@ -10,13 +10,14 @@ import { diffExtension } from "./modules/diffExtension";
 
 export default class InlineAIChatPlugin extends Plugin {
 	settings: InlineAISettings = DEFAULT_SETTINGS;
+	chatapi: ChatApiManager;
 
 	async onload() {
 		await this.loadSettings();
-		const chatapi = new ChatApiManager(this.settings, this.app);
+		this.chatapi = new ChatApiManager(this.settings, this.app);
 
 		this.registerEditorExtension([
-			FloatingTooltipExtension(chatapi),
+			FloatingTooltipExtension(this.chatapi),
 			generatedResponseState,
 			currentSelectionState,
 			buildSelectionHiglightState,
