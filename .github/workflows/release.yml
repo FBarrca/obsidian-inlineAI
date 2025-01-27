@@ -47,7 +47,7 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           tag: ${{ steps.get_tag.outputs.tag_name }}
-          name: Release ${{ steps.get_tag.outputs.tag_name }}
+          name: ${{ steps.get_tag.outputs.tag_name }}
           artifacts: |
             ${{ env.PLUGIN_NAME }}.zip
             main.js
