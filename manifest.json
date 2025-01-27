@@ -1,7 +1,7 @@
 {
 	"id": "inlineai",
 	"name": "InlineAI",
-	"version": "1.0.7",
+	"version": "1.0.10",
 	"minAppVersion": "0.15.0",
 	"description": "AI-powered suggestions, contextual edits, and advanced text transformations directly into your editor.",
 	"author": "FBarrca",
