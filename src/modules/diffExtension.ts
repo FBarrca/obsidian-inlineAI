@@ -39,12 +39,25 @@ class ChangeContentWidget extends WidgetType {
 			"aria-label",
 			this.type === "added" ? "Added content" : "Removed content",
 		);
+
+		// Prevent mouse interactions from stealing focus from the editor
+		// which can trigger Obsidian to re-render code blocks. We don't want
+		// these inline diff widgets to affect editor selection or focus.
+		wrapper.addEventListener("mousedown", (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+		});
+		wrapper.addEventListener("click", (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+		});
 		return wrapper;
 	}
 
 	ignoreEvent(): boolean {
-		// Decide whether to ignore events on the widget
-		return false;
+		// Ensure events on diff widgets are ignored by the outer editor
+		// to avoid focus/selection changes that can trigger re-renders.
+		return true;
 	}
 }
 
@@ -180,5 +193,78 @@ const applyDiffPlugin = ViewPlugin.fromClass(
 
 /**
  * Exported extension to be included in the EditorView.
+ * Declared after focusGuardPlugin so it is initialized in order.
  */
-export const diffExtension = [diffDecorationState, applyDiffPlugin];
+
+/**
+ * Focus guard to suppress editor-level blur/focusout side effects while the
+ * InlineAI widget is open. This mirrors the behavior in WidgetExtension but
+ * ensures that moving focus between the diff overlay and the widget does not
+ * trigger Obsidian re-renders (e.g., code block previews).
+ */
+const focusGuardPlugin = ViewPlugin.fromClass(
+	class {
+		private onFocusOut: ((e: FocusEvent) => void) | null = null;
+		private onBlur: ((e: FocusEvent) => void) | null = null;
+
+		constructor(private view: EditorView) {
+			const handler = (evt: FocusEvent) => {
+				// Only guard when the InlineAI widget is open
+				if (document.body.classList.contains("inlineai-widget-open")) {
+					// Stop Obsidian/global listeners from reacting to focus loss
+					evt.stopImmediatePropagation?.();
+					evt.stopPropagation();
+					// Do not preventDefault so the focus can move as intended
+				}
+			};
+
+			this.onFocusOut = handler;
+			this.onBlur = handler;
+
+			// Attach on the editor root in capture phase to intercept early
+			this.view.dom.addEventListener("focusout", this.onFocusOut, true);
+			this.view.dom.addEventListener("blur", this.onBlur, true);
+
+			// Also attach at the document level to guard cases where focus moves
+			// between editor and non-editor nodes within the document
+			document.addEventListener("focusout", this.onFocusOut, true);
+			document.addEventListener("blur", this.onBlur, true);
+		}
+
+		destroy() {
+			try {
+				if (this.onFocusOut) {
+					this.view.dom.removeEventListener(
+						"focusout",
+						this.onFocusOut,
+						true,
+					);
+					document.removeEventListener(
+						"focusout",
+						this.onFocusOut,
+						true,
+					);
+				}
+				if (this.onBlur) {
+					this.view.dom.removeEventListener(
+						"blur",
+						this.onBlur,
+						true,
+					);
+					document.removeEventListener("blur", this.onBlur, true);
+				}
+			} catch (e) {
+				// ignore cleanup issues
+			}
+		}
+	},
+);
+
+// Export a single extension that includes the focus guard
+export const diffExtension = [
+    diffDecorationState,
+    applyDiffPlugin,
+    focusGuardPlugin,
+];
+
+// (guardedDiffExtension removed — diffExtension now includes the guard)
