@@ -52,6 +52,10 @@ class FloatingWidget extends WidgetType {
 	private onEscape: ((event: KeyboardEvent) => void) | null = null;
 	private escapeWindows: Window[] = [];
 
+	// Handlers to suppress Obsidian focusout/blur effects when interacting with the widget
+	private onOuterEditorFocusOut: ((event: FocusEvent) => void) | null = null;
+	private onOuterEditorBlur: ((event: FocusEvent) => void) | null = null;
+
 	constructor(
 		chatApiManager: ChatApiManager,
 		selectionInfo: SelectionInfo | null,
@@ -152,7 +156,52 @@ class FloatingWidget extends WidgetType {
 			this.escapeWindows = [];
 		});
 
+		// Add a body-level flag so we can style/coordinate behavior if needed
+		document.body.classList.add("inlineai-widget-open");
+
+		// Suppress Obsidian's code block preview toggle when focus moves
+		// from the editor into our widget by swallowing focusout/blur on the
+		// editor when the new focus is within the widget DOM.
+		const editorRoot = this.outerEditorView.dom;
+		this.onOuterEditorFocusOut = (evt: FocusEvent) => {
+			const next = (evt.relatedTarget as Node) || document.activeElement;
+			if (next && this.dom.contains(next)) {
+				// Stop the event so Obsidian doesn't react to loss of focus
+				evt.stopImmediatePropagation?.();
+				evt.stopPropagation();
+				// Do not preventDefault so the focus change to the widget works
+			}
+		};
+		this.onOuterEditorBlur = (evt: FocusEvent) => {
+			const next = (evt.relatedTarget as Node) || document.activeElement;
+			if (next && this.dom.contains(next)) {
+				evt.stopImmediatePropagation?.();
+				evt.stopPropagation();
+			}
+		};
+		// Use capture to intercept before other listeners
+		editorRoot.addEventListener(
+			"focusout",
+			this.onOuterEditorFocusOut,
+			true,
+		);
+		editorRoot.addEventListener("blur", this.onOuterEditorBlur, true);
+
 		return this.dom;
+	}
+
+	/**
+	 * Ensure interactions inside the widget do not move the outer editor
+	 * selection or steal selection focus, which would cause Obsidian to
+	 * re-render code blocks (e.g., mermaid) when the widget is open.
+	 */
+	public override ignoreEvent(event: Event): boolean {
+		// Returning true tells CodeMirror to ignore events for selection/focus
+		// updates in the outer editor when they originate from this widget.
+		// This keeps the editor's selection anchored (e.g., inside a mermaid
+		// code block) and prevents the block from rendering while the widget
+		// is open and being interacted with.
+		return true;
 	}
 
 	public override destroy(): void {
@@ -164,6 +213,32 @@ class FloatingWidget extends WidgetType {
 
 		if (this.acceptButton) this.acceptButton.remove();
 		if (this.discardButton) this.discardButton.remove();
+
+		// Remove flag/class
+		document.body.classList.remove("inlineai-widget-open");
+
+		// Remove focus suppression listeners if attached
+		try {
+			const editorRoot = this.outerEditorView?.dom;
+			if (editorRoot && this.onOuterEditorFocusOut) {
+				editorRoot.removeEventListener(
+					"focusout",
+					this.onOuterEditorFocusOut,
+					true,
+				);
+			}
+			if (editorRoot && this.onOuterEditorBlur) {
+				editorRoot.removeEventListener(
+					"blur",
+					this.onOuterEditorBlur,
+					true,
+				);
+			}
+		} catch (e) {
+			// ignore cleanup errors
+		}
+		this.onOuterEditorFocusOut = null;
+		this.onOuterEditorBlur = null;
 
 		this.textFieldView = undefined;
 		this.outerEditorView = null;
