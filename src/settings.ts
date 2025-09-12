@@ -26,7 +26,7 @@ export const DEFAULT_SETTINGS: InlineAISettings = {
 	cursorPrompt: cursorPrompt,
 	customCommands: [],
 	commandPrefix: "/",
-	messageHistory: false
+	messageHistory: false,
 };
 
 export class InlineAISettingsTab extends PluginSettingTab {
@@ -50,7 +50,9 @@ export class InlineAISettingsTab extends PluginSettingTab {
 		// Provider setting
 		new Setting(containerEl)
 			.setName("Provider")
-			.setDesc("Choose between OpenAI, Ollama, or a custom OpenAI-compatible endpoint.")
+			.setDesc(
+				"Choose between OpenAI, Ollama, or a custom OpenAI-compatible endpoint.",
+			)
 			.addDropdown((dropdown) =>
 				dropdown
 					.addOption("openai", "OpenAI")
@@ -59,10 +61,14 @@ export class InlineAISettingsTab extends PluginSettingTab {
 					.addOption("custom", "Custom/OpenAI-compatible")
 					.setValue(this.plugin.settings.provider)
 					.onChange(async (value) => {
-						this.plugin.settings.provider = value as "openai" | "ollama" | "custom" | "gemini";
+						this.plugin.settings.provider = value as
+							| "openai"
+							| "ollama"
+							| "custom"
+							| "gemini";
 						await this.saveSettings();
 						this.display(); // Refresh UI to show/hide API key field
-					})
+					}),
 			);
 
 		// Model setting
@@ -79,7 +85,11 @@ export class InlineAISettingsTab extends PluginSettingTab {
 			});
 
 		// API Key setting (conditionally displayed for OpenAI-supported endpoints)
-		if (this.plugin.settings.provider === "openai" || this.plugin.settings.provider === "custom" || this.plugin.settings.provider === "gemini") {
+		if (
+			this.plugin.settings.provider === "openai" ||
+			this.plugin.settings.provider === "custom" ||
+			this.plugin.settings.provider === "gemini"
+		) {
 			new Setting(containerEl)
 				.setName("API key")
 				.setDesc("Enter your API key.")
@@ -97,7 +107,9 @@ export class InlineAISettingsTab extends PluginSettingTab {
 		if (this.plugin.settings.provider === "custom") {
 			new Setting(containerEl)
 				.setName("Custom endpoint")
-				.setDesc("Enter your OpenAI-compatible base URL (e.g. https://api.groq.com/openai/v1).")
+				.setDesc(
+					"Enter your OpenAI-compatible base URL (e.g. https://api.groq.com/openai/v1).",
+				)
 				.addText((text) => {
 					text.setPlaceholder("https://api.mycustomhost.com/v1")
 						.setValue(this.plugin.settings.customURL || "")
@@ -113,12 +125,16 @@ export class InlineAISettingsTab extends PluginSettingTab {
 		// Selection Prompt setting
 		new Setting(containerEl)
 			.setName("Selection prompt")
-			.setDesc("System Prompt used when the tooltip is triggered with selected text.")
+			.setDesc(
+				"System Prompt used when the tooltip is triggered with selected text.",
+			)
 			.addTextArea((textarea) => {
-				textarea.setPlaceholder("e.g., Summarize the selected text.")
+				textarea
+					.setPlaceholder("e.g., Summarize the selected text.")
 					.setValue(this.plugin.settings.selectionPrompt)
 					.inputEl.addEventListener("blur", async () => {
-						this.plugin.settings.selectionPrompt = textarea.getValue();
+						this.plugin.settings.selectionPrompt =
+							textarea.getValue();
 						await this.saveSettings();
 					});
 				textarea.inputEl.classList.add("wide-text-settings");
@@ -127,9 +143,14 @@ export class InlineAISettingsTab extends PluginSettingTab {
 		// Cursor Prompt setting
 		new Setting(containerEl)
 			.setName("Cursor prompt")
-			.setDesc("System Prompt used when the tooltip is triggered with selected text.")
+			.setDesc(
+				"System Prompt used when the tooltip is triggered with selected text.",
+			)
 			.addTextArea((textarea) => {
-				textarea.setPlaceholder("e.g., Generate text based on cursor position.")
+				textarea
+					.setPlaceholder(
+						"e.g., Generate text based on cursor position.",
+					)
 					.setValue(this.plugin.settings.cursorPrompt)
 					.inputEl.addEventListener("blur", async () => {
 						this.plugin.settings.cursorPrompt = textarea.getValue();
@@ -141,28 +162,37 @@ export class InlineAISettingsTab extends PluginSettingTab {
 		// Message History setting
 		new Setting(containerEl)
 			.setName("Message History")
-			.setDesc("Enable message history, you can navigate through the history using the up/down arrow keys.")
+			.setDesc(
+				"Enable message history, you can navigate through the history using the up/down arrow keys.",
+			)
 			.addToggle((toggle) => {
-				toggle.setValue(this.plugin.settings.messageHistory)
+				toggle
+					.setValue(this.plugin.settings.messageHistory)
 					.onChange(async (value) => {
 						this.plugin.settings.messageHistory = value;
 						await this.saveSettings();
 					});
 			});
-		
+
 		// Custom Commands Section
 		containerEl.createEl("h3", { text: "Custom Commands" });
-		containerEl.createEl("p", { text: "Add your own custom commands. Triggered with the prefix defined in the Command Prefix setting." });
+		containerEl.createEl("p", {
+			text: "Add your own custom commands. Triggered with the prefix defined in the Command Prefix setting.",
+		});
 
 		// Command Prefix setting
 		new Setting(containerEl)
 			.setName("Command Prefix")
-			.setDesc("The prefix used to trigger custom commands (e.g., /, !, #)")
+			.setDesc(
+				"The prefix used to trigger custom commands (e.g., /, !, #)",
+			)
 			.addText((text) => {
 				text.setPlaceholder("/")
 					.setValue(this.plugin.settings.commandPrefix)
 					.inputEl.addEventListener("blur", async () => {
-						this.plugin.settings.commandPrefix = text.getValue().charAt(0);
+						this.plugin.settings.commandPrefix = text
+							.getValue()
+							.charAt(0);
 						await this.saveSettings();
 						this.display();
 					});
@@ -177,15 +207,18 @@ export class InlineAISettingsTab extends PluginSettingTab {
 					text.setValue(command.keyword)
 						.setPlaceholder("Command name")
 						.inputEl.addEventListener("blur", async () => {
-							this.plugin.settings.customCommands[index].keyword = text.getValue();
+							this.plugin.settings.customCommands[index].keyword =
+								text.getValue();
 							await this.saveSettings();
 						});
 				})
 				.addTextArea((textarea) => {
-					textarea.setValue(command.prompt)
+					textarea
+						.setValue(command.prompt)
 						.setPlaceholder("Command prompt")
 						.inputEl.addEventListener("blur", async () => {
-							this.plugin.settings.customCommands[index].prompt = textarea.getValue();
+							this.plugin.settings.customCommands[index].prompt =
+								textarea.getValue();
 							await this.saveSettings();
 						});
 				})
@@ -194,14 +227,15 @@ export class InlineAISettingsTab extends PluginSettingTab {
 						.setIcon("trash")
 						.setTooltip("Delete this command")
 						.onClick(async () => {
-							this.plugin.settings.customCommands.splice(index, 1);
+							this.plugin.settings.customCommands.splice(
+								index,
+								1,
+							);
 							await this.saveSettings();
 							this.display();
-						})
+						}),
 				);
 		});
-
-
 
 		// Add new command button
 		new Setting(containerEl).addButton((btn) =>
@@ -209,10 +243,13 @@ export class InlineAISettingsTab extends PluginSettingTab {
 				.setButtonText("Add Command")
 				.setCta()
 				.onClick(async () => {
-					this.plugin.settings.customCommands.push({ keyword: "new_command", prompt: "" });
+					this.plugin.settings.customCommands.push({
+						keyword: "new_command",
+						prompt: "",
+					});
 					await this.saveSettings();
 					this.display();
-				})
+				}),
 		);
 	}
 }

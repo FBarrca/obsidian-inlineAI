@@ -79,12 +79,16 @@
 @keyframes l5 {
 	0%,
 	33% {
-		box-shadow: 10px 0 var(--text-accent), -10px 0 var(--text-faint);
+		box-shadow:
+			10px 0 var(--text-accent),
+			-10px 0 var(--text-faint);
 		background: var(--text-accent);
 	}
 	66%,
 	100% {
-		box-shadow: 10px 0 var(--text-faint), -10px 0 var(--text-accent);
+		box-shadow:
+			10px 0 var(--text-faint),
+			-10px 0 var(--text-accent);
 		background: var(--text-faint);
 	}
 }
@@ -118,7 +122,7 @@
 	height: 10em;
 }
 
-.tooltip-autocomplete{
+.tooltip-autocomplete {
 	background-color: var(--background-primary-alt) !important;
 	color: var(--text-normal) !important;
 	width: 101.9% !important;
@@ -130,11 +134,11 @@
 }
 
 .tooltip-autocomplete li[aria-selected] {
-	background-color: var(--text-selection)!important;
+	background-color: var(--text-selection) !important;
 	color: var(--text-accent) !important;
 }
 
-.completion-label{
+.completion-label {
 	font-size: var(--font-ui-small);
 	font-weight: var(--font-normal);
 	font-family: Arial, Helvetica, sans-serif !important;
@@ -144,12 +148,11 @@
 
 .cm-tooltip.cm-tooltip-below {
 	top: 100%;
-	margin-top: 0.8em;   
+	margin-top: 0.8em;
 	bottom: auto;
 }
 
 /* Slash command highlighting */
 .cm-slash-command {
-  color: var(--text-accent);
-  
+	color: var(--text-accent);
 }

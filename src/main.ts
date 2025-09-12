@@ -1,11 +1,24 @@
 // main.ts
 import { Plugin, MarkdownView, App } from "obsidian";
 import { EditorView } from "@codemirror/view";
-import { InlineAISettings, DEFAULT_SETTINGS, InlineAISettingsTab } from "./settings";
-import { acceptTooltipEffect, commandEffect, dismissTooltipEffect, FloatingTooltipExtension } from "./modules/WidgetExtension";
+import {
+	InlineAISettings,
+	DEFAULT_SETTINGS,
+	InlineAISettingsTab,
+} from "./settings";
+import {
+	acceptTooltipEffect,
+	commandEffect,
+	dismissTooltipEffect,
+	FloatingTooltipExtension,
+} from "./modules/WidgetExtension";
 import { ChatApiManager } from "./api";
 import { generatedResponseState } from "./modules/AIExtension";
-import { buildSelectionHiglightState, currentSelectionState, setSelectionInfoEffect } from "./modules/SelectionState";
+import {
+	buildSelectionHiglightState,
+	currentSelectionState,
+	setSelectionInfoEffect,
+} from "./modules/SelectionState";
 import { diffExtension } from "./modules/diffExtension";
 
 export default class InlineAIChatPlugin extends Plugin {
@@ -21,7 +34,7 @@ export default class InlineAIChatPlugin extends Plugin {
 			generatedResponseState,
 			currentSelectionState,
 			buildSelectionHiglightState,
-			diffExtension
+			diffExtension,
 		]);
 
 		// Add command to show tooltip
@@ -29,9 +42,11 @@ export default class InlineAIChatPlugin extends Plugin {
 			id: "show-cursor-tooltip",
 			name: "Show cursor tooltip",
 			callback: () => {
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
+				const markdownView =
+					this.app.workspace.getActiveViewOfType(MarkdownView);
 				if (markdownView) {
-					const cmEditor = (markdownView.editor as any).cm as EditorView;
+					const cmEditor = (markdownView.editor as any)
+						.cm as EditorView;
 
 					// Grab the main selection range
 					const { from, to } = cmEditor.state.selection.main;
@@ -39,13 +54,22 @@ export default class InlineAIChatPlugin extends Plugin {
 
 					if (from !== to) {
 						// If there is a real selection, store it
-						const selectedText = cmEditor.state.doc.sliceString(from, to);
+						const selectedText = cmEditor.state.doc.sliceString(
+							from,
+							to,
+						);
 						effects.push(
-							setSelectionInfoEffect.of({ from, to, text: selectedText })
+							setSelectionInfoEffect.of({
+								from,
+								to,
+								text: selectedText,
+							}),
 						);
 					} else {
 						// If no selection, store cursor position instead of null
-						effects.push(setSelectionInfoEffect.of({ from, to, text: "" }));
+						effects.push(
+							setSelectionInfoEffect.of({ from, to, text: "" }),
+						);
 					}
 
 					// Also trigger the overlay
@@ -55,18 +79,22 @@ export default class InlineAIChatPlugin extends Plugin {
 					cmEditor.dispatch({ effects });
 				}
 			},
-			hotkeys: [
-			],
+			hotkeys: [],
 		});
 		this.addCommand({
 			id: "accept-tooltip",
 			name: "Accept tooltip suggestion",
 			callback: () => {
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
+				const markdownView =
+					this.app.workspace.getActiveViewOfType(MarkdownView);
 				if (markdownView) {
-					const cmEditor = (markdownView.editor as any).cm as EditorView;
+					const cmEditor = (markdownView.editor as any)
+						.cm as EditorView;
 
-					const response = cmEditor.state.field(generatedResponseState, false);
+					const response = cmEditor.state.field(
+						generatedResponseState,
+						false,
+					);
 					if (response) {
 						cmEditor.dispatch({
 							effects: acceptTooltipEffect.of(null),
@@ -76,25 +104,28 @@ export default class InlineAIChatPlugin extends Plugin {
 						});
 					}
 				}
-			}
-
+			},
 		});
 		this.addCommand({
 			id: "discard-tooltip",
 			name: "Discard tooltip suggestion",
 			callback: () => {
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
+				const markdownView =
+					this.app.workspace.getActiveViewOfType(MarkdownView);
 				if (markdownView) {
-					const cmEditor = (markdownView.editor as any).cm as EditorView;
-					const response = cmEditor.state.field(generatedResponseState, false);
+					const cmEditor = (markdownView.editor as any)
+						.cm as EditorView;
+					const response = cmEditor.state.field(
+						generatedResponseState,
+						false,
+					);
 					if (response) {
 						cmEditor.dispatch({
 							effects: dismissTooltipEffect.of(null),
 						});
 					}
 				}
-			}
-
+			},
 		});
 
 		// Add settings tab
@@ -106,7 +137,11 @@ export default class InlineAIChatPlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		this.settings = Object.assign(
+			{},
+			DEFAULT_SETTINGS,
+			await this.loadData(),
+		);
 	}
 
 	async saveSettings() {

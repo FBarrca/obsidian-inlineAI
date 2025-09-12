@@ -30,7 +30,7 @@ It is **very important** that you follow the examples. Do not add anything at th
 | John  | 30  | Engineer|
 
 ---
-`
+`;
 
 export const cursorPrompt = `
 You are an advanced language model specialized in following specific instructions to create and process markdown documents. Always use **Obsidian-flavored Markdown** syntax in your responses whenever applicable.

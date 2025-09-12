@@ -59,15 +59,14 @@
 ### Initial Setup
 
 1. **Set up your API key**:
+    - Open the plugin settings in Obsidian.
+    - Enter your API key for OpenAI, Ollama, Gemini or any supported model provider.
 
-   - Open the plugin settings in Obsidian.
-   - Enter your API key for OpenAI, Ollama, Gemini or any supported model provider.
 2. **Choose a model**:
+    - Supported models include `gpt-4`, `llama3.2`, and others.
 
-   - Supported models include `gpt-4`, `llama3.2`, and others.
 3. **Configure prompts**:
-
-   - Define system and transformation prompts in settings for customized interactions.
+    - Define system and transformation prompts in settings for customized interactions.
 
 ### How to Use
 
@@ -97,6 +96,7 @@ Want to contribute? Here’s how:
     git clone https://github.com/FBarrca/obsidian-inlineai.git
 
     ```
+
 2. Install dependencies:
 
     ```bash
@@ -104,6 +104,7 @@ Want to contribute? Here’s how:
     npm install
 
     ```
+
 3. Build the plugin:
 
     ```bash
