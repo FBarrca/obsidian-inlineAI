@@ -262,9 +262,7 @@ const focusGuardPlugin = ViewPlugin.fromClass(
 
 // Export a single extension that includes the focus guard
 export const diffExtension = [
-    diffDecorationState,
-    applyDiffPlugin,
-    focusGuardPlugin,
+	diffDecorationState,
+	applyDiffPlugin,
+	focusGuardPlugin,
 ];
-
-// (guardedDiffExtension removed — diffExtension now includes the guard)
