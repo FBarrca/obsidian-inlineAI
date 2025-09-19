@@ -5,10 +5,12 @@ import { SlashCommand } from "./modules/commands/source";
 
 // Interface for the settings
 export interface InlineAISettings {
-	provider: "openai" | "ollama" | "custom" | "gemini";
+	provider: "openai" | "ollama" | "custom" | "gemini" | "azure";
 	model: string;
 	apiKey?: string;
 	customURL?: string;
+	azureEndpoint?: string;
+	azureApiVersion?: string;
 	selectionPrompt: string;
 	cursorPrompt: string;
 	customCommands: SlashCommand[];
@@ -22,6 +24,8 @@ export const DEFAULT_SETTINGS: InlineAISettings = {
 	model: "llama3.2",
 	apiKey: "",
 	customURL: "",
+	azureEndpoint: "",
+	azureApiVersion: "2024-02-15-preview",
 	selectionPrompt: selectionPrompt,
 	cursorPrompt: cursorPrompt,
 	customCommands: [],
@@ -51,12 +55,13 @@ export class InlineAISettingsTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Provider")
 			.setDesc(
-				"Choose between OpenAI, Ollama, or a custom OpenAI-compatible endpoint.",
+				"Choose between OpenAI, Ollama, Azure OpenAI, Gemini, or a custom OpenAI-compatible endpoint.",
 			)
 			.addDropdown((dropdown) =>
 				dropdown
 					.addOption("openai", "OpenAI")
 					.addOption("ollama", "Ollama")
+					.addOption("azure", "Azure OpenAI")
 					.addOption("gemini", "Gemini")
 					.addOption("custom", "Custom/OpenAI-compatible")
 					.setValue(this.plugin.settings.provider)
@@ -64,6 +69,7 @@ export class InlineAISettingsTab extends PluginSettingTab {
 						this.plugin.settings.provider = value as
 							| "openai"
 							| "ollama"
+							| "azure"
 							| "custom"
 							| "gemini";
 						await this.saveSettings();
@@ -88,7 +94,8 @@ export class InlineAISettingsTab extends PluginSettingTab {
 		if (
 			this.plugin.settings.provider === "openai" ||
 			this.plugin.settings.provider === "custom" ||
-			this.plugin.settings.provider === "gemini"
+			this.plugin.settings.provider === "gemini" ||
+			this.plugin.settings.provider === "azure"
 		) {
 			new Setting(containerEl)
 				.setName("API key")
@@ -115,6 +122,46 @@ export class InlineAISettingsTab extends PluginSettingTab {
 						.setValue(this.plugin.settings.customURL || "")
 						.inputEl.addEventListener("blur", async () => {
 							this.plugin.settings.customURL = text.getValue();
+							await this.saveSettings();
+						});
+				});
+		}
+
+		// Azure-specific settings
+		if (this.plugin.settings.provider === "azure") {
+			// Azure endpoint setting
+			new Setting(containerEl)
+				.setName("Azure endpoint")
+				.setDesc(
+					"Enter your Azure OpenAI endpoint URL (e.g. https://your-resource.openai.azure.com).",
+				)
+				.addText((text) => {
+					text.setPlaceholder(
+						"https://your-resource.openai.azure.com",
+					)
+						.setValue(this.plugin.settings.azureEndpoint || "")
+						.inputEl.addEventListener("blur", async () => {
+							this.plugin.settings.azureEndpoint = text
+								.getValue()
+								.trim();
+							await this.saveSettings();
+						});
+				});
+
+			// Azure API version setting
+			new Setting(containerEl)
+				.setName("Azure API version")
+				.setDesc("Enter the Azure OpenAI API version to use.")
+				.addText((text) => {
+					text.setPlaceholder("2024-02-15-preview")
+						.setValue(
+							this.plugin.settings.azureApiVersion ||
+								"2024-02-15-preview",
+						)
+						.inputEl.addEventListener("blur", async () => {
+							this.plugin.settings.azureApiVersion = text
+								.getValue()
+								.trim();
 							await this.saveSettings();
 						});
 				});

@@ -1,5 +1,5 @@
 // api.ts
-import { ChatOpenAI } from "@langchain/openai";
+import { ChatOpenAI, AzureChatOpenAI } from "@langchain/openai";
 import { ChatOllama } from "@langchain/ollama";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import {
@@ -25,7 +25,12 @@ export type HistoryMessage = {
  * Class to manage interactions with different chat APIs.
  */
 export class ChatApiManager {
-	private chatClient: ChatOpenAI | ChatOllama | ChatGoogleGenerativeAI | null;
+	private chatClient:
+		| ChatOpenAI
+		| ChatOllama
+		| ChatGoogleGenerativeAI
+		| AzureChatOpenAI
+		| null;
 	private app: App;
 	private settings: InlineAISettings;
 	private messageHistory: MessageQueue<HistoryMessage>;
@@ -44,13 +49,44 @@ export class ChatApiManager {
 	}
 
 	/**
+	 * Extracts the instance name from an Azure endpoint URL.
+	 * @param endpoint - The Azure endpoint URL.
+	 * @returns The instance name or null if invalid.
+	 */
+	private extractAzureInstanceName(endpoint: string): string | null {
+		const trimmedEndpoint = endpoint.trim();
+
+		// Match both openai.azure.com and cognitiveservices.azure.com formats
+		const openaiMatch = trimmedEndpoint.match(
+			/https:\/\/([^.]+)\.openai\.azure\.com/,
+		);
+		if (openaiMatch) {
+			return openaiMatch[1];
+		}
+
+		const cognitiveservicesMatch = trimmedEndpoint.match(
+			/https:\/\/([^.]+)\.cognitiveservices\.azure\.com/,
+		);
+		if (cognitiveservicesMatch) {
+			return cognitiveservicesMatch[1];
+		}
+
+		return null;
+	}
+
+	/**
 	 * Initializes the appropriate chat client based on the provider specified in settings.
 	 * @param settings - Configuration settings for the chat API.
-	 * @returns An instance of ChatOpenAI, ChatOllama, or null if initialization fails.
+	 * @returns An instance of ChatOpenAI, ChatOllama, AzureChatOpenAI, or null if initialization fails.
 	 */
 	private initializeChatClient(
 		settings: InlineAISettings,
-	): ChatOpenAI | ChatOllama | ChatGoogleGenerativeAI | null {
+	):
+		| ChatOpenAI
+		| ChatOllama
+		| ChatGoogleGenerativeAI
+		| AzureChatOpenAI
+		| null {
 		try {
 			if (settings.messageHistory) {
 				this.messageHistory = new MessageQueue<HistoryMessage>(
@@ -82,6 +118,33 @@ export class ChatApiManager {
 					return new ChatGoogleGenerativeAI({
 						model: settings.model,
 						apiKey: settings.apiKey,
+					});
+				case "azure":
+					if (!settings.apiKey || !settings.azureEndpoint) {
+						new Notice(
+							"⚠️ API key and Azure endpoint are required for Azure provider.",
+						);
+						return null;
+					}
+
+					// Extract instance name from the endpoint URL
+					const instanceName = this.extractAzureInstanceName(
+						settings.azureEndpoint,
+					);
+					if (!instanceName) {
+						new Notice(
+							"⚠️ Invalid Azure endpoint format. Expected: https://your-resource.openai.azure.com",
+						);
+						return null;
+					}
+
+					return new AzureChatOpenAI({
+						azureOpenAIApiKey: settings.apiKey,
+						azureOpenAIApiInstanceName: instanceName,
+						azureOpenAIApiDeploymentName: settings.model,
+						azureOpenAIApiVersion:
+							settings.azureApiVersion || "2024-02-15-preview",
+						temperature: 0,
 					});
 				case "custom":
 					if (!settings.apiKey || !settings.customURL) {
@@ -134,7 +197,10 @@ export class ChatApiManager {
 		];
 
 		try {
-			const aiMessage: AIMessage = await this.chatClient.invoke(messages);
+			const aiMessage = await this.chatClient.invoke(messages);
+			if (typeof aiMessage === "string") {
+				return aiMessage;
+			}
 			return aiMessage.content.toString();
 		} catch (error: any) {
 			console.error("Error calling the chat model:", error);
