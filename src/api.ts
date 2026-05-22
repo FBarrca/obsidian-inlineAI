@@ -10,6 +10,8 @@ import {
 import { InlineAISettings } from "./settings";
 import { App, MarkdownView, Notice } from "obsidian";
 import { EditorView } from "@codemirror/view";
+import { callCodexApi } from "./codex-client";
+import { getValidCodexToken, CodexTokens } from "./codex-auth";
 import { setGeneratedResponseEffect } from "./modules/AIExtension";
 import { parseCommand } from "./modules/commands/parser";
 import { MessageQueue } from "./modules/messageHistory/queue";
@@ -163,6 +165,10 @@ export class ChatApiManager {
 						},
 					});
 
+				case "codex":
+					// Handled directly in callApi — no LangChain client needed
+					return null;
+
 				default:
 					new Notice(`⚠️ Unsupported provider: ${settings.provider}`);
 					return null;
@@ -184,6 +190,10 @@ export class ChatApiManager {
 		systemMessage: string,
 		message: string,
 	): Promise<string> {
+		if (this.settings.provider === "codex") {
+			return this.callCodexProvider(systemMessage, message);
+		}
+
 		if (!this.chatClient) {
 			new Notice(
 				"⚠️ Chat client is not initialized. Please check your settings.",
@@ -206,6 +216,40 @@ export class ChatApiManager {
 			console.error("Error calling the chat model:", error);
 			new Notice(`❌ Error calling the chat model: ${error.message}`);
 			return "⚠️ Failed to generate a response. Please try again later.";
+		}
+	}
+
+	private async callCodexProvider(systemMessage: string, message: string): Promise<string> {
+		const s = this.settings;
+		if (!s.codexAccess || !s.codexRefresh || !s.codexAccountId) {
+			new Notice("⚠️ Codex: not signed in — open Settings → InlineAI and click 'Sign in with ChatGPT'");
+			return "⚠️ Codex not authenticated.";
+		}
+
+		try {
+			const tokens: CodexTokens = {
+				access: s.codexAccess,
+				refresh: s.codexRefresh,
+				expires: s.codexExpires ?? 0,
+				accountId: s.codexAccountId,
+			};
+
+			const accessToken = await getValidCodexToken(tokens, async (refreshed) => {
+				this.settings.codexAccess = refreshed.access;
+				this.settings.codexRefresh = refreshed.refresh;
+				this.settings.codexExpires = refreshed.expires;
+			});
+
+			if (!accessToken) {
+				new Notice("⚠️ Codex: session expired — please sign in again");
+				return "⚠️ Codex session expired.";
+			}
+
+			return await callCodexApi(systemMessage, message, accessToken, s.codexAccountId, s.model);
+		} catch (error: any) {
+			console.error("Codex error:", error);
+			new Notice(`❌ Codex: ${error.message}`);
+			return "⚠️ Codex request failed.";
 		}
 	}
 

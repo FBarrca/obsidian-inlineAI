@@ -1,11 +1,12 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
+import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import MyPlugin from "./main";
 import { cursorPrompt, selectionPrompt } from "./default_prompts";
 import { SlashCommand } from "./modules/commands/source";
+import { startCodexOAuthFlow } from "./codex-auth";
 
 // Interface for the settings
 export interface InlineAISettings {
-	provider: "openai" | "ollama" | "custom" | "gemini" | "azure";
+	provider: "openai" | "ollama" | "custom" | "gemini" | "azure" | "codex";
 	model: string;
 	apiKey?: string;
 	customURL?: string;
@@ -16,6 +17,11 @@ export interface InlineAISettings {
 	customCommands: SlashCommand[];
 	commandPrefix: string;
 	messageHistory: boolean;
+	// Codex subscription OAuth tokens
+	codexAccess?: string;
+	codexRefresh?: string;
+	codexExpires?: number;
+	codexAccountId?: string;
 }
 
 // Default settings values
@@ -55,7 +61,7 @@ export class InlineAISettingsTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Provider")
 			.setDesc(
-				"Choose between OpenAI, Ollama, Azure OpenAI, Gemini, or a custom OpenAI-compatible endpoint.",
+				"Choose between OpenAI, Ollama, Azure OpenAI, Gemini, a custom OpenAI-compatible endpoint, or Codex (ChatGPT subscription).",
 			)
 			.addDropdown((dropdown) =>
 				dropdown
@@ -64,6 +70,7 @@ export class InlineAISettingsTab extends PluginSettingTab {
 					.addOption("azure", "Azure OpenAI")
 					.addOption("gemini", "Gemini")
 					.addOption("custom", "Custom/OpenAI-compatible")
+					.addOption("codex", "Codex (ChatGPT subscription)")
 					.setValue(this.plugin.settings.provider)
 					.onChange(async (value) => {
 						this.plugin.settings.provider = value as
@@ -71,11 +78,54 @@ export class InlineAISettingsTab extends PluginSettingTab {
 							| "ollama"
 							| "azure"
 							| "custom"
-							| "gemini";
+							| "gemini"
+							| "codex";
 						await this.saveSettings();
-						this.display(); // Refresh UI to show/hide API key field
+						this.display();
 					}),
 			);
+
+		// Codex subscription auth section
+		if (this.plugin.settings.provider === "codex") {
+			const isSignedIn = !!(
+				this.plugin.settings.codexAccess &&
+				this.plugin.settings.codexAccountId
+			);
+
+			new Setting(containerEl)
+				.setName("ChatGPT account")
+				.setDesc(
+					isSignedIn
+						? `Signed in (account: ${this.plugin.settings.codexAccountId})`
+						: "Not signed in — click to authenticate with your ChatGPT Plus/Pro subscription.",
+				)
+				.addButton((btn) => {
+					btn.setButtonText(isSignedIn ? "Sign out" : "Sign in with ChatGPT")
+						.setCta()
+						.onClick(async () => {
+							if (isSignedIn) {
+								this.plugin.settings.codexAccess = undefined;
+								this.plugin.settings.codexRefresh = undefined;
+								this.plugin.settings.codexExpires = undefined;
+								this.plugin.settings.codexAccountId = undefined;
+								await this.saveSettings();
+								this.display();
+							} else {
+								new Notice("Opening browser for ChatGPT sign-in…");
+								const tokens = await startCodexOAuthFlow();
+								if (tokens) {
+									this.plugin.settings.codexAccess = tokens.access;
+									this.plugin.settings.codexRefresh = tokens.refresh;
+									this.plugin.settings.codexExpires = tokens.expires;
+									this.plugin.settings.codexAccountId = tokens.accountId;
+									await this.saveSettings();
+									new Notice("✅ Codex: signed in successfully");
+									this.display();
+								}
+							}
+						});
+				});
+		}
 
 		// Model setting
 		new Setting(containerEl)
