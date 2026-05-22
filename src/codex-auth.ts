@@ -1,5 +1,5 @@
 import * as http from "http";
-import { Notice } from "obsidian";
+import { Notice, requestUrl } from "obsidian";
 
 const CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann";
 const AUTHORIZE_URL = "https://auth.openai.com/oauth/authorize";
@@ -58,7 +58,8 @@ function extractAccountId(accessToken: string): string | null {
 }
 
 async function exchangeCode(code: string, verifier: string): Promise<CodexTokens | null> {
-	const res = await fetch(TOKEN_URL, {
+	const res = await requestUrl({
+		url: TOKEN_URL,
 		method: "POST",
 		headers: { "Content-Type": "application/x-www-form-urlencoded" },
 		body: new URLSearchParams({
@@ -67,12 +68,13 @@ async function exchangeCode(code: string, verifier: string): Promise<CodexTokens
 			code,
 			code_verifier: verifier,
 			redirect_uri: REDIRECT_URI,
-		}),
+		}).toString(),
+		throw: false,
 	});
 
-	if (!res.ok) return null;
+	if (res.status < 200 || res.status >= 300) return null;
 
-	const json = await res.json() as any;
+	const json = res.json as any;
 	if (!json.access_token || !json.refresh_token) return null;
 
 	const accountId = extractAccountId(json.access_token);
@@ -87,19 +89,21 @@ async function exchangeCode(code: string, verifier: string): Promise<CodexTokens
 }
 
 export async function refreshCodexToken(tokens: CodexTokens): Promise<CodexTokens | null> {
-	const res = await fetch(TOKEN_URL, {
+	const res = await requestUrl({
+		url: TOKEN_URL,
 		method: "POST",
 		headers: { "Content-Type": "application/x-www-form-urlencoded" },
 		body: new URLSearchParams({
 			grant_type: "refresh_token",
 			refresh_token: tokens.refresh,
 			client_id: CLIENT_ID,
-		}),
+		}).toString(),
+		throw: false,
 	});
 
-	if (!res.ok) return null;
+	if (res.status < 200 || res.status >= 300) return null;
 
-	const json = await res.json() as any;
+	const json = res.json as any;
 	if (!json.access_token || !json.refresh_token) return null;
 
 	return {

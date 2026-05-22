@@ -128,17 +128,61 @@ export class InlineAISettingsTab extends PluginSettingTab {
 		}
 
 		// Model setting
-		new Setting(containerEl)
-			.setName("Model")
-			.setDesc("Specify the model to use.")
-			.addText((text) => {
-				text.setPlaceholder("e.g., gpt-4o-mini")
-					.setValue(this.plugin.settings.model)
-					.inputEl.addEventListener("blur", async () => {
-						this.plugin.settings.model = text.getValue();
-						await this.saveSettings();
+		if (this.plugin.settings.provider === "codex") {
+			const CODEX_MODELS = [
+				{ value: "gpt-5.5", label: "GPT-5.5 (recommended)" },
+				{ value: "gpt-5.4-mini", label: "GPT-5.4 mini (faster)" },
+				{ value: "gpt-5.3-codex-spark", label: "GPT-5.3 Codex Spark (Pro only)" },
+				{ value: "gpt-5.2-codex", label: "GPT-5.2 Codex" },
+				{ value: "gpt-5.1-codex", label: "GPT-5.1 Codex" },
+				{ value: "gpt-5.1-codex-max", label: "GPT-5.1 Codex Max" },
+				{ value: "codex-mini-latest", label: "Codex Mini" },
+				{ value: "custom", label: "Custom…" },
+			];
+			const isCustom = !CODEX_MODELS.some(
+				(m) => m.value === this.plugin.settings.model && m.value !== "custom",
+			);
+			const dropdownValue = isCustom ? "custom" : this.plugin.settings.model;
+
+			new Setting(containerEl)
+				.setName("Model")
+				.setDesc("Select a Codex model.")
+				.addDropdown((dd) => {
+					CODEX_MODELS.forEach((m) => dd.addOption(m.value, m.label));
+					dd.setValue(dropdownValue).onChange(async (value) => {
+						if (value !== "custom") {
+							this.plugin.settings.model = value;
+							await this.saveSettings();
+						}
+						this.display();
 					});
-			});
+				});
+
+			if (isCustom || dropdownValue === "custom") {
+				new Setting(containerEl)
+					.setName("Custom model ID")
+					.addText((text) => {
+						text.setPlaceholder("e.g., gpt-5.1-codex")
+							.setValue(isCustom ? this.plugin.settings.model : "")
+							.inputEl.addEventListener("blur", async () => {
+								this.plugin.settings.model = text.getValue();
+								await this.saveSettings();
+							});
+					});
+			}
+		} else {
+			new Setting(containerEl)
+				.setName("Model")
+				.setDesc("Specify the model to use.")
+				.addText((text) => {
+					text.setPlaceholder("e.g., gpt-4o-mini")
+						.setValue(this.plugin.settings.model)
+						.inputEl.addEventListener("blur", async () => {
+							this.plugin.settings.model = text.getValue();
+							await this.saveSettings();
+						});
+				});
+		}
 
 		// API Key setting (conditionally displayed for OpenAI-supported endpoints)
 		if (

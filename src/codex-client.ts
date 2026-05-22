@@ -1,3 +1,5 @@
+import { requestUrl } from "obsidian";
+
 const CODEX_API_URL = "https://chatgpt.com/backend-api/codex/responses";
 
 interface ResponsesInput {
@@ -19,13 +21,16 @@ interface ResponsesBody {
 
 function normalizeModel(model: string): string {
 	const m = model.toLowerCase().trim();
+	if (m === "gpt-5.5" || m.includes("gpt-5.5")) return "gpt-5.5";
+	if (m === "gpt-5.4-mini" || m.includes("gpt-5.4-mini")) return "gpt-5.4-mini";
+	if (m.includes("gpt-5.3-codex-spark") || m.includes("codex-spark")) return "gpt-5.3-codex-spark";
 	if (m.includes("gpt-5.2-codex") || m.includes("gpt 5.2 codex")) return "gpt-5.2-codex";
 	if (m.includes("gpt-5.1-codex-max") || m.includes("codex-max")) return "gpt-5.1-codex-max";
 	if (m.includes("codex-mini-latest") || m.includes("codex-mini")) return "codex-mini-latest";
 	if (m.includes("gpt-5.1-codex") || m.includes("codex")) return "gpt-5.1-codex";
 	if (m.includes("gpt-5.2")) return "gpt-5.2";
 	if (m.includes("gpt-5.1")) return "gpt-5.1";
-	return "gpt-5.1-codex";
+	return m; // pass through unknown models as-is
 }
 
 function parseSseText(sseBody: string): string {
@@ -102,7 +107,8 @@ export async function callCodexApi(
 		include: ["reasoning.encrypted_content"],
 	};
 
-	const res = await fetch(CODEX_API_URL, {
+	const res = await requestUrl({
+		url: CODEX_API_URL,
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
@@ -113,14 +119,14 @@ export async function callCodexApi(
 			"accept": "text/event-stream",
 		},
 		body: JSON.stringify(body),
+		throw: false,
 	});
 
-	if (!res.ok) {
-		const text = await res.text().catch(() => "");
-		throw new Error(`Codex API ${res.status}: ${text.slice(0, 200)}`);
+	if (res.status < 200 || res.status >= 300) {
+		throw new Error(`Codex API ${res.status}: ${res.text.slice(0, 200)}`);
 	}
 
-	const rawText = await res.text();
+	const rawText = res.text;
 	const result = parseSseText(rawText);
 	if (!result) throw new Error("Codex returned empty response");
 	return result;
