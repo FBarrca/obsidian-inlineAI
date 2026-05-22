@@ -129,13 +129,39 @@ export async function getValidCodexToken(
 	if (tokens.expires > Date.now() + 60_000) return tokens.access;
 
 	const refreshed = await refreshCodexToken(tokens);
-	if (!refreshed) return null;
+	if (!refreshed) {
+		new Notice(
+			"⚠️ Codex: session expired — open Settings → InlineAI to sign in again",
+			10000,
+		);
+		return null;
+	}
 
 	await onRefresh(refreshed);
 	return refreshed.access;
 }
 
+function isPortInUse(port: number): Promise<boolean> {
+	return new Promise((resolve) => {
+		const tester = http.createServer();
+		tester.once("error", () => resolve(true));
+		tester.once("listening", () => {
+			tester.close();
+			resolve(false);
+		});
+		tester.listen(port, "127.0.0.1");
+	});
+}
+
 export async function startCodexOAuthFlow(): Promise<CodexTokens | null> {
+	if (await isPortInUse(CALLBACK_PORT)) {
+		new Notice(
+			"❌ Codex: port 1455 is already in use — close the Codex CLI or any other app using it, then try again",
+			8000,
+		);
+		return null;
+	}
+
 	const { verifier, challenge } = await generatePKCE();
 	const state = randomState();
 

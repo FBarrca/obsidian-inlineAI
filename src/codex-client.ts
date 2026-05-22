@@ -59,18 +59,24 @@ function parseSseText(sseBody: string): string {
 				parts.push(json.delta);
 			}
 
-			// response.completed — full text in output[].content[]
-			if (json.type === "response.completed") {
-				// only use completed if we got no deltas (requestUrl buffers whole response)
-				if (parts.length === 0) {
-					for (const item of json.response?.output ?? []) {
-						for (const c of item.content ?? []) {
-							if (
-								c.type === "output_text" &&
-								typeof c.text === "string"
-							) {
-								parts.push(c.text);
-							}
+			// response.output_text.done — full text for this content part
+			if (
+				json.type === "response.output_text.done" &&
+				typeof json.text === "string" &&
+				parts.length === 0
+			) {
+				parts.push(json.text);
+			}
+
+			// response.completed — fallback if no deltas/done events
+			if (json.type === "response.completed" && parts.length === 0) {
+				for (const item of json.response?.output ?? []) {
+					for (const c of item.content ?? []) {
+						if (
+							c.type === "output_text" &&
+							typeof c.text === "string"
+						) {
+							parts.push(c.text);
 						}
 					}
 				}
@@ -130,7 +136,19 @@ export async function callCodexApi(
 	});
 
 	if (res.status < 200 || res.status >= 300) {
-		throw new Error(`Codex API ${res.status}: ${res.text.slice(0, 200)}`);
+		let msg = `Codex API error ${res.status}`;
+		try {
+			const err = JSON.parse(res.text)?.error;
+			if (res.status === 429) {
+				msg =
+					"Subscription limit reached — wait a moment and try again";
+			} else if (res.status === 403) {
+				msg = `Model not available on your plan${err?.message ? ": " + err.message : " — try gpt-5.4-mini instead"}`;
+			} else if (err?.message) {
+				msg = err.message;
+			}
+		} catch {}
+		throw new Error(msg);
 	}
 
 	const rawText = res.text;

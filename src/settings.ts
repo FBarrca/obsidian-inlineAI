@@ -73,6 +73,15 @@ export class InlineAISettingsTab extends PluginSettingTab {
 					.addOption("codex", "Codex (ChatGPT subscription)")
 					.setValue(this.plugin.settings.provider)
 					.onChange(async (value) => {
+						const CODEX_MODEL_IDS = [
+							"gpt-5.5",
+							"gpt-5.4-mini",
+							"gpt-5.3-codex-spark",
+							"gpt-5.2-codex",
+							"gpt-5.1-codex",
+							"gpt-5.1-codex-max",
+							"codex-mini-latest",
+						];
 						this.plugin.settings.provider = value as
 							| "openai"
 							| "ollama"
@@ -80,6 +89,15 @@ export class InlineAISettingsTab extends PluginSettingTab {
 							| "custom"
 							| "gemini"
 							| "codex";
+						// Reset model to a sane default when switching to Codex
+						if (
+							value === "codex" &&
+							!CODEX_MODEL_IDS.includes(
+								this.plugin.settings.model,
+							)
+						) {
+							this.plugin.settings.model = "gpt-5.4-mini";
+						}
 						await this.saveSettings();
 						this.display();
 					}),
@@ -135,6 +153,13 @@ export class InlineAISettingsTab extends PluginSettingTab {
 							}
 						});
 				});
+
+			if (isSignedIn) {
+				containerEl.createEl("p", {
+					text: "⚠️ Auth tokens are stored in plaintext in your vault's data.json. Do not commit or share this file.",
+					cls: "setting-item-description",
+				});
+			}
 		}
 
 		// Model setting
