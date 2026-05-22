@@ -89,6 +89,8 @@ function parseSseText(sseBody: string): string {
 	return parts.join("");
 }
 
+const MAX_INPUT_CHARS = 60_000; // ~15k tokens, well under Codex limits
+
 export async function callCodexApi(
 	systemMessage: string,
 	userMessage: string,
@@ -96,7 +98,16 @@ export async function callCodexApi(
 	accountId: string,
 	model: string,
 ): Promise<string> {
+	if (!model.trim())
+		throw new Error("No model selected — set one in Settings → InlineAI");
+
 	const normalizedModel = normalizeModel(model);
+
+	// Truncate very long inputs to avoid silent API failures
+	const truncatedUser =
+		userMessage.length > MAX_INPUT_CHARS
+			? userMessage.slice(0, MAX_INPUT_CHARS) + "\n\n[…truncated]"
+			: userMessage;
 
 	const body: ResponsesBody = {
 		model: normalizedModel,
@@ -109,7 +120,7 @@ export async function callCodexApi(
 			{
 				type: "message",
 				role: "user",
-				content: [{ type: "input_text", text: userMessage }],
+				content: [{ type: "input_text", text: truncatedUser }],
 			},
 		],
 		instructions: "",
@@ -152,7 +163,10 @@ export async function callCodexApi(
 	}
 
 	const rawText = res.text;
-	const result = parseSseText(rawText);
-	if (!result) throw new Error("Codex returned empty response");
+	const result = parseSseText(rawText).trim();
+	if (!result)
+		throw new Error(
+			"Codex returned an empty response — the model may only have produced reasoning tokens. Try a different prompt or model.",
+		);
 	return result;
 }

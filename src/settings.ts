@@ -164,18 +164,51 @@ export class InlineAISettingsTab extends PluginSettingTab {
 
 		// Model setting
 		if (this.plugin.settings.provider === "codex") {
-			const CODEX_MODELS = [
-				{ value: "gpt-5.5", label: "GPT-5.5 (recommended)" },
-				{ value: "gpt-5.4-mini", label: "GPT-5.4 mini (faster)" },
+			const CODEX_MODELS: {
+				value: string;
+				label: string;
+				desc: string;
+			}[] = [
+				{
+					value: "gpt-5.5",
+					label: "GPT-5.5",
+					desc: "Most capable — best for complex rewrites and reasoning",
+				},
+				{
+					value: "gpt-5.4-mini",
+					label: "GPT-5.4 mini ✦ recommended",
+					desc: "Fast and cost-efficient — ideal for inline edits",
+				},
 				{
 					value: "gpt-5.3-codex-spark",
 					label: "GPT-5.3 Codex Spark (Pro only)",
+					desc: "Near-instant iteration — requires ChatGPT Pro",
 				},
-				{ value: "gpt-5.2-codex", label: "GPT-5.2 Codex" },
-				{ value: "gpt-5.1-codex", label: "GPT-5.1 Codex" },
-				{ value: "gpt-5.1-codex-max", label: "GPT-5.1 Codex Max" },
-				{ value: "codex-mini-latest", label: "Codex Mini" },
-				{ value: "custom", label: "Custom…" },
+				{
+					value: "gpt-5.2-codex",
+					label: "GPT-5.2 Codex",
+					desc: "Strong coding and structured writing",
+				},
+				{
+					value: "gpt-5.1-codex",
+					label: "GPT-5.1 Codex",
+					desc: "Balanced coding model",
+				},
+				{
+					value: "gpt-5.1-codex-max",
+					label: "GPT-5.1 Codex Max",
+					desc: "High-effort variant of GPT-5.1 Codex",
+				},
+				{
+					value: "codex-mini-latest",
+					label: "Codex Mini",
+					desc: "Lightest and fastest option",
+				},
+				{
+					value: "custom",
+					label: "Custom…",
+					desc: "Enter a model ID manually",
+				},
 			];
 			const isCustom = !CODEX_MODELS.some(
 				(m) =>
@@ -185,10 +218,16 @@ export class InlineAISettingsTab extends PluginSettingTab {
 			const dropdownValue = isCustom
 				? "custom"
 				: this.plugin.settings.model;
+			const selectedModel = CODEX_MODELS.find(
+				(m) => m.value === dropdownValue,
+			);
 
 			new Setting(containerEl)
 				.setName("Model")
-				.setDesc("Select a Codex model.")
+				.setDesc(
+					selectedModel?.desc ??
+						"Select the model to use for Codex requests.",
+				)
 				.addDropdown((dd) => {
 					CODEX_MODELS.forEach((m) => dd.addOption(m.value, m.label));
 					dd.setValue(dropdownValue).onChange(async (value) => {
@@ -202,16 +241,28 @@ export class InlineAISettingsTab extends PluginSettingTab {
 			if (isCustom || dropdownValue === "custom") {
 				new Setting(containerEl)
 					.setName("Custom model ID")
+					.setDesc(
+						"Enter the exact model ID as used by the Codex API.",
+					)
 					.addText((text) => {
 						text.setPlaceholder("e.g., gpt-5.1-codex")
 							.setValue(
 								isCustom ? this.plugin.settings.model : "",
 							)
 							.inputEl.addEventListener("blur", async () => {
-								this.plugin.settings.model = text.getValue();
+								this.plugin.settings.model = text
+									.getValue()
+									.trim();
 								await this.saveSettings();
+								this.display();
 							});
 					});
+				if (!this.plugin.settings.model.trim()) {
+					containerEl.createEl("p", {
+						text: "⚠️ No model ID entered — requests will fail until you set one.",
+						cls: "setting-item-description",
+					});
+				}
 			}
 		} else {
 			new Setting(containerEl)
