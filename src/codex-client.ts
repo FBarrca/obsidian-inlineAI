@@ -22,12 +22,18 @@ interface ResponsesBody {
 function normalizeModel(model: string): string {
 	const m = model.toLowerCase().trim();
 	if (m === "gpt-5.5" || m.includes("gpt-5.5")) return "gpt-5.5";
-	if (m === "gpt-5.4-mini" || m.includes("gpt-5.4-mini")) return "gpt-5.4-mini";
-	if (m.includes("gpt-5.3-codex-spark") || m.includes("codex-spark")) return "gpt-5.3-codex-spark";
-	if (m.includes("gpt-5.2-codex") || m.includes("gpt 5.2 codex")) return "gpt-5.2-codex";
-	if (m.includes("gpt-5.1-codex-max") || m.includes("codex-max")) return "gpt-5.1-codex-max";
-	if (m.includes("codex-mini-latest") || m.includes("codex-mini")) return "codex-mini-latest";
-	if (m.includes("gpt-5.1-codex") || m.includes("codex")) return "gpt-5.1-codex";
+	if (m === "gpt-5.4-mini" || m.includes("gpt-5.4-mini"))
+		return "gpt-5.4-mini";
+	if (m.includes("gpt-5.3-codex-spark") || m.includes("codex-spark"))
+		return "gpt-5.3-codex-spark";
+	if (m.includes("gpt-5.2-codex") || m.includes("gpt 5.2 codex"))
+		return "gpt-5.2-codex";
+	if (m.includes("gpt-5.1-codex-max") || m.includes("codex-max"))
+		return "gpt-5.1-codex-max";
+	if (m.includes("codex-mini-latest") || m.includes("codex-mini"))
+		return "codex-mini-latest";
+	if (m.includes("gpt-5.1-codex") || m.includes("codex"))
+		return "gpt-5.1-codex";
 	if (m.includes("gpt-5.2")) return "gpt-5.2";
 	if (m.includes("gpt-5.1")) return "gpt-5.1";
 	return m; // pass through unknown models as-is
@@ -46,7 +52,10 @@ function parseSseText(sseBody: string): string {
 			const json = JSON.parse(data) as any;
 
 			// response.output_text.delta — delta is a plain string
-			if (json.type === "response.output_text.delta" && typeof json.delta === "string") {
+			if (
+				json.type === "response.output_text.delta" &&
+				typeof json.delta === "string"
+			) {
 				parts.push(json.delta);
 			}
 
@@ -56,7 +65,10 @@ function parseSseText(sseBody: string): string {
 				if (parts.length === 0) {
 					for (const item of json.response?.output ?? []) {
 						for (const c of item.content ?? []) {
-							if (c.type === "output_text" && typeof c.text === "string") {
+							if (
+								c.type === "output_text" &&
+								typeof c.text === "string"
+							) {
 								parts.push(c.text);
 							}
 						}
@@ -107,11 +119,11 @@ export async function callCodexApi(
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
-			"Authorization": `Bearer ${accessToken}`,
+			Authorization: `Bearer ${accessToken}`,
 			"chatgpt-account-id": accountId,
 			"OpenAI-Beta": "responses=experimental",
-			"originator": "codex_cli_rs",
-			"accept": "text/event-stream",
+			originator: "codex_cli_rs",
+			accept: "text/event-stream",
 		},
 		body: JSON.stringify(body),
 		throw: false,

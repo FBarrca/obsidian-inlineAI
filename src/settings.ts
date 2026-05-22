@@ -100,7 +100,9 @@ export class InlineAISettingsTab extends PluginSettingTab {
 						: "Not signed in — click to authenticate with your ChatGPT Plus/Pro subscription.",
 				)
 				.addButton((btn) => {
-					btn.setButtonText(isSignedIn ? "Sign out" : "Sign in with ChatGPT")
+					btn.setButtonText(
+						isSignedIn ? "Sign out" : "Sign in with ChatGPT",
+					)
 						.setCta()
 						.onClick(async () => {
 							if (isSignedIn) {
@@ -111,15 +113,23 @@ export class InlineAISettingsTab extends PluginSettingTab {
 								await this.saveSettings();
 								this.display();
 							} else {
-								new Notice("Opening browser for ChatGPT sign-in…");
+								new Notice(
+									"Opening browser for ChatGPT sign-in…",
+								);
 								const tokens = await startCodexOAuthFlow();
 								if (tokens) {
-									this.plugin.settings.codexAccess = tokens.access;
-									this.plugin.settings.codexRefresh = tokens.refresh;
-									this.plugin.settings.codexExpires = tokens.expires;
-									this.plugin.settings.codexAccountId = tokens.accountId;
+									this.plugin.settings.codexAccess =
+										tokens.access;
+									this.plugin.settings.codexRefresh =
+										tokens.refresh;
+									this.plugin.settings.codexExpires =
+										tokens.expires;
+									this.plugin.settings.codexAccountId =
+										tokens.accountId;
 									await this.saveSettings();
-									new Notice("✅ Codex: signed in successfully");
+									new Notice(
+										"✅ Codex: signed in successfully",
+									);
 									this.display();
 								}
 							}
@@ -132,7 +142,10 @@ export class InlineAISettingsTab extends PluginSettingTab {
 			const CODEX_MODELS = [
 				{ value: "gpt-5.5", label: "GPT-5.5 (recommended)" },
 				{ value: "gpt-5.4-mini", label: "GPT-5.4 mini (faster)" },
-				{ value: "gpt-5.3-codex-spark", label: "GPT-5.3 Codex Spark (Pro only)" },
+				{
+					value: "gpt-5.3-codex-spark",
+					label: "GPT-5.3 Codex Spark (Pro only)",
+				},
 				{ value: "gpt-5.2-codex", label: "GPT-5.2 Codex" },
 				{ value: "gpt-5.1-codex", label: "GPT-5.1 Codex" },
 				{ value: "gpt-5.1-codex-max", label: "GPT-5.1 Codex Max" },
@@ -140,9 +153,13 @@ export class InlineAISettingsTab extends PluginSettingTab {
 				{ value: "custom", label: "Custom…" },
 			];
 			const isCustom = !CODEX_MODELS.some(
-				(m) => m.value === this.plugin.settings.model && m.value !== "custom",
+				(m) =>
+					m.value === this.plugin.settings.model &&
+					m.value !== "custom",
 			);
-			const dropdownValue = isCustom ? "custom" : this.plugin.settings.model;
+			const dropdownValue = isCustom
+				? "custom"
+				: this.plugin.settings.model;
 
 			new Setting(containerEl)
 				.setName("Model")
@@ -150,7 +167,8 @@ export class InlineAISettingsTab extends PluginSettingTab {
 				.addDropdown((dd) => {
 					CODEX_MODELS.forEach((m) => dd.addOption(m.value, m.label));
 					dd.setValue(dropdownValue).onChange(async (value) => {
-						this.plugin.settings.model = value === "custom" ? "" : value;
+						this.plugin.settings.model =
+							value === "custom" ? "" : value;
 						await this.saveSettings();
 						this.display();
 					});
@@ -161,7 +179,9 @@ export class InlineAISettingsTab extends PluginSettingTab {
 					.setName("Custom model ID")
 					.addText((text) => {
 						text.setPlaceholder("e.g., gpt-5.1-codex")
-							.setValue(isCustom ? this.plugin.settings.model : "")
+							.setValue(
+								isCustom ? this.plugin.settings.model : "",
+							)
 							.inputEl.addEventListener("blur", async () => {
 								this.plugin.settings.model = text.getValue();
 								await this.saveSettings();

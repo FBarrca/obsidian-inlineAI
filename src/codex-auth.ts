@@ -15,7 +15,10 @@ export interface CodexTokens {
 	accountId: string;
 }
 
-async function generatePKCE(): Promise<{ verifier: string; challenge: string }> {
+async function generatePKCE(): Promise<{
+	verifier: string;
+	challenge: string;
+}> {
 	const array = new Uint8Array(32);
 	crypto.getRandomValues(array);
 	const verifier = btoa(String.fromCharCode(...array))
@@ -57,7 +60,10 @@ function extractAccountId(accessToken: string): string | null {
 	return auth?.user_id ?? auth?.account_id ?? null;
 }
 
-async function exchangeCode(code: string, verifier: string): Promise<CodexTokens | null> {
+async function exchangeCode(
+	code: string,
+	verifier: string,
+): Promise<CodexTokens | null> {
 	const res = await requestUrl({
 		url: TOKEN_URL,
 		method: "POST",
@@ -88,7 +94,9 @@ async function exchangeCode(code: string, verifier: string): Promise<CodexTokens
 	};
 }
 
-export async function refreshCodexToken(tokens: CodexTokens): Promise<CodexTokens | null> {
+export async function refreshCodexToken(
+	tokens: CodexTokens,
+): Promise<CodexTokens | null> {
 	const res = await requestUrl({
 		url: TOKEN_URL,
 		method: "POST",
@@ -173,7 +181,9 @@ export async function startCodexOAuthFlow(): Promise<CodexTokens | null> {
 			}
 
 			res.writeHead(200, { "Content-Type": "text/html" });
-			res.end("<html><body><h2>Signed in! You can close this tab.</h2></body></html>");
+			res.end(
+				"<html><body><h2>Signed in! You can close this tab.</h2></body></html>",
+			);
 
 			const tokens = await exchangeCode(code, verifier);
 			if (!tokens) {
@@ -184,22 +194,29 @@ export async function startCodexOAuthFlow(): Promise<CodexTokens | null> {
 
 		server.on("error", (e: any) => {
 			if (e.code === "EADDRINUSE") {
-				new Notice("❌ Codex: port 1455 in use — close other Codex sessions first");
+				new Notice(
+					"❌ Codex: port 1455 in use — close other Codex sessions first",
+				);
 			}
 			done(null);
 		});
 
 		server.listen(CALLBACK_PORT, "127.0.0.1", () => {
 			window.open(url.toString());
-			new Notice("🔐 Codex: browser opened — complete sign-in to continue");
+			new Notice(
+				"🔐 Codex: browser opened — complete sign-in to continue",
+			);
 		});
 
 		// Timeout after 5 minutes
-		setTimeout(() => {
-			if (!resolved) {
-				new Notice("⚠️ Codex: sign-in timed out");
-				done(null);
-			}
-		}, 5 * 60 * 1000);
+		setTimeout(
+			() => {
+				if (!resolved) {
+					new Notice("⚠️ Codex: sign-in timed out");
+					done(null);
+				}
+			},
+			5 * 60 * 1000,
+		);
 	});
 }

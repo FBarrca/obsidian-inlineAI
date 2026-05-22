@@ -219,10 +219,15 @@ export class ChatApiManager {
 		}
 	}
 
-	private async callCodexProvider(systemMessage: string, message: string): Promise<string> {
+	private async callCodexProvider(
+		systemMessage: string,
+		message: string,
+	): Promise<string> {
 		const s = this.settings;
 		if (!s.codexAccess || !s.codexRefresh || !s.codexAccountId) {
-			new Notice("⚠️ Codex: not signed in — open Settings → InlineAI and click 'Sign in with ChatGPT'");
+			new Notice(
+				"⚠️ Codex: not signed in — open Settings → InlineAI and click 'Sign in with ChatGPT'",
+			);
 			return "⚠️ Codex not authenticated.";
 		}
 
@@ -234,18 +239,27 @@ export class ChatApiManager {
 				accountId: s.codexAccountId,
 			};
 
-			const accessToken = await getValidCodexToken(tokens, async (refreshed) => {
-				this.settings.codexAccess = refreshed.access;
-				this.settings.codexRefresh = refreshed.refresh;
-				this.settings.codexExpires = refreshed.expires;
-			});
+			const accessToken = await getValidCodexToken(
+				tokens,
+				async (refreshed) => {
+					this.settings.codexAccess = refreshed.access;
+					this.settings.codexRefresh = refreshed.refresh;
+					this.settings.codexExpires = refreshed.expires;
+				},
+			);
 
 			if (!accessToken) {
 				new Notice("⚠️ Codex: session expired — please sign in again");
 				return "⚠️ Codex session expired.";
 			}
 
-			return await callCodexApi(systemMessage, message, accessToken, s.codexAccountId, s.model);
+			return await callCodexApi(
+				systemMessage,
+				message,
+				accessToken,
+				s.codexAccountId,
+				s.model,
+			);
 		} catch (error: any) {
 			console.error("Codex error:", error);
 			new Notice(`❌ Codex: ${error.message}`);
