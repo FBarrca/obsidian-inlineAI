@@ -150,10 +150,8 @@ export class InlineAISettingsTab extends PluginSettingTab {
 				.addDropdown((dd) => {
 					CODEX_MODELS.forEach((m) => dd.addOption(m.value, m.label));
 					dd.setValue(dropdownValue).onChange(async (value) => {
-						if (value !== "custom") {
-							this.plugin.settings.model = value;
-							await this.saveSettings();
-						}
+						this.plugin.settings.model = value === "custom" ? "" : value;
+						await this.saveSettings();
 						this.display();
 					});
 				});

@@ -44,26 +44,21 @@ function parseSseText(sseBody: string): string {
 
 		try {
 			const json = JSON.parse(data) as any;
-			// Responses API emits output[].content[].text deltas
-			for (const output of json.output ?? []) {
-				for (const content of output.content ?? []) {
-					if (content.type === "output_text" && content.text) {
-						parts.push(content.text);
-					}
-				}
+
+			// response.output_text.delta — delta is a plain string
+			if (json.type === "response.output_text.delta" && typeof json.delta === "string") {
+				parts.push(json.delta);
 			}
-			// Delta format
-			const delta = json.delta;
-			if (delta?.type === "output_text" && delta.text) {
-				parts.push(delta.text);
-			}
-			// Snapshot format (non-streaming final)
+
+			// response.completed — full text in output[].content[]
 			if (json.type === "response.completed") {
-				const output = json.response?.output ?? [];
-				for (const item of output) {
-					for (const c of item.content ?? []) {
-						if (c.type === "output_text" && c.text) {
-							parts.push(c.text);
+				// only use completed if we got no deltas (requestUrl buffers whole response)
+				if (parts.length === 0) {
+					for (const item of json.response?.output ?? []) {
+						for (const c of item.content ?? []) {
+							if (c.type === "output_text" && typeof c.text === "string") {
+								parts.push(c.text);
+							}
 						}
 					}
 				}
