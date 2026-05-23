@@ -304,6 +304,73 @@ export class ChatApiManager {
 			return "⚠️ Failed to process request.";
 		}
 	}
+	private extractNoteContext(selectionText: string): string {
+		try {
+			const file = this.app.workspace.getActiveFile();
+			const noteTitle = file?.basename ?? "";
+			const markdownView =
+				this.app.workspace.getActiveViewOfType(MarkdownView);
+			if (!markdownView) return "";
+
+			const cm = (markdownView.editor as any).cm as EditorView;
+			const doc = cm.state.doc.toString();
+			const cursor = cm.state.selection.main.from;
+
+			// Find nearest heading above cursor
+			const docBeforeCursor = doc.slice(0, cursor);
+			const lines = docBeforeCursor.split("\n");
+			let nearestHeading = "";
+			for (let i = lines.length - 1; i >= 0; i--) {
+				if (/^#{1,3}\s/.test(lines[i])) {
+					nearestHeading = lines[i].replace(/^#+\s*/, "").trim();
+					break;
+				}
+			}
+
+			// Get surrounding paragraphs (split by blank lines)
+			const selectionStart = doc.indexOf(
+				selectionText,
+				Math.max(0, cursor - selectionText.length - 200),
+			);
+			const before =
+				selectionStart > 0
+					? doc.slice(0, selectionStart)
+					: docBeforeCursor;
+			const after =
+				selectionStart >= 0
+					? doc.slice(selectionStart + selectionText.length)
+					: doc.slice(cursor);
+
+			const beforeParas = before
+				.split(/\n\n+/)
+				.filter((p) => p.trim())
+				.slice(-3);
+			const afterParas = after
+				.split(/\n\n+/)
+				.filter((p) => p.trim())
+				.slice(0, 3);
+
+			if (beforeParas.length === 0 && afterParas.length === 0) return "";
+
+			const MAX_CONTEXT_CHARS = 1500;
+			let contextStr = "";
+			if (noteTitle) contextStr += `Note: ${noteTitle}\n`;
+			if (nearestHeading) contextStr += `Section: ${nearestHeading}\n`;
+			if (beforeParas.length > 0)
+				contextStr += `\nContext before:\n${beforeParas.join("\n\n")}`;
+			if (afterParas.length > 0)
+				contextStr += `\n\nContext after:\n${afterParas.join("\n\n")}`;
+
+			if (contextStr.length > MAX_CONTEXT_CHARS) {
+				contextStr = contextStr.slice(0, MAX_CONTEXT_CHARS) + "\n[…]";
+			}
+
+			return contextStr.trim();
+		} catch {
+			return "";
+		}
+	}
+
 	/**
 	 * Processes selected text using the specified prompt and transformation.
 	 * @param userPrompt - The transformation prompt (e.g., "Add Emojis").
@@ -346,7 +413,11 @@ export class ChatApiManager {
 
       **Output:**`;
 		}
-		return this.handleEditorUpdate(systemPrompt, finalUserPrompt);
+		const noteContext = this.extractNoteContext(selectedText);
+		const enhancedSystemPrompt = noteContext
+			? `${systemPrompt}\n\n---\nDocument context (for reference only — do not include in output):\n${noteContext}`
+			: systemPrompt;
+		return this.handleEditorUpdate(enhancedSystemPrompt, finalUserPrompt);
 	}
 
 	/**
