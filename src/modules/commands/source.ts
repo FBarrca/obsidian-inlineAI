@@ -17,6 +17,41 @@ export interface SlashCommand {
 	prompt: string;
 }
 
+export const BUILT_IN_COMMANDS: SlashCommand[] = [
+	{
+		keyword: "fix",
+		prompt: "Fix grammar, spelling, and punctuation. Keep the original meaning and style. Output only the corrected text.",
+	},
+	{
+		keyword: "shorter",
+		prompt: "Make this text more concise. Remove filler words and redundancy. Keep all key information. Output only the shortened text.",
+	},
+	{
+		keyword: "longer",
+		prompt: "Expand this text with more detail, examples, or explanation. Keep the same tone. Output only the expanded text.",
+	},
+	{
+		keyword: "formal",
+		prompt: "Rewrite this text in a formal, professional tone. Output only the rewritten text.",
+	},
+	{
+		keyword: "casual",
+		prompt: "Rewrite this text in a friendly, casual tone. Output only the rewritten text.",
+	},
+	{
+		keyword: "bullets",
+		prompt: "Convert this text into a clear bullet-point list using Obsidian markdown. Output only the bullet list.",
+	},
+	{
+		keyword: "summarize",
+		prompt: "Write a concise summary of this text in 2-3 sentences. Output only the summary.",
+	},
+	{
+		keyword: "continue",
+		prompt: "Continue writing from where this text ends, matching the tone and style. Output only the continuation — do not repeat existing text.",
+	},
+];
+
 // Factory function that creates a completion source with custom parameters
 function createSlashCommandSource(
 	options: {
@@ -28,12 +63,13 @@ function createSlashCommandSource(
 	},
 ) {
 	const { prefix, customCommands } = options;
+	const allCommands = [...BUILT_IN_COMMANDS, ...customCommands];
 	return (context: CompletionContext) => {
 		let word = context.matchBefore(new RegExp(`^\\${prefix}\\w*`));
 		if (!word || (word.from == word.to && !context.explicit)) return null;
 		return {
 			from: word.from + 1,
-			options: customCommands.map((cmd) => ({
+			options: allCommands.map((cmd) => ({
 				label: cmd.keyword,
 				type: undefined,
 				detail: cmd.prompt,
@@ -82,7 +118,8 @@ export function createSlashCommandHighlighter({
 			}
 
 			buildDecorations(view: EditorView) {
-				const keywords = customCommands
+				const allCommands = [...BUILT_IN_COMMANDS, ...customCommands];
+				const keywords = allCommands
 					.map((cmd) => cmd.keyword)
 					.join("|");
 				const regexp = new RegExp(`\\${prefix}(${keywords})\\b`, "g");

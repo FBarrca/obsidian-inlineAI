@@ -1,7 +1,7 @@
 import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import MyPlugin from "./main";
 import { cursorPrompt, selectionPrompt } from "./default_prompts";
-import { SlashCommand } from "./modules/commands/source";
+import { SlashCommand, BUILT_IN_COMMANDS } from "./modules/commands/source";
 import { startCodexOAuthFlow } from "./codex-auth";
 
 // Interface for the settings
@@ -413,6 +413,10 @@ export class InlineAISettingsTab extends PluginSettingTab {
 		containerEl.createEl("h3", { text: "Custom Commands" });
 		containerEl.createEl("p", {
 			text: "Add your own custom commands. Triggered with the prefix defined in the Command Prefix setting.",
+		});
+		containerEl.createEl("p", {
+			text: `Built-in: ${BUILT_IN_COMMANDS.map((c) => this.plugin.settings.commandPrefix + c.keyword).join("  •  ")}`,
+			cls: "setting-item-description",
 		});
 
 		// Command Prefix setting
