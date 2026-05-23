@@ -1,5 +1,5 @@
 import * as http from "http";
-import { Notice } from "obsidian";
+import { Notice, requestUrl } from "obsidian";
 
 const CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann";
 const AUTHORIZE_URL = "https://auth.openai.com/oauth/authorize";
@@ -15,7 +15,10 @@ export interface CodexTokens {
 	accountId: string;
 }
 
-async function generatePKCE(): Promise<{ verifier: string; challenge: string }> {
+async function generatePKCE(): Promise<{
+	verifier: string;
+	challenge: string;
+}> {
 	const array = new Uint8Array(32);
 	crypto.getRandomValues(array);
 	const verifier = btoa(String.fromCharCode(...array))
@@ -57,8 +60,12 @@ function extractAccountId(accessToken: string): string | null {
 	return auth?.user_id ?? auth?.account_id ?? null;
 }
 
-async function exchangeCode(code: string, verifier: string): Promise<CodexTokens | null> {
-	const res = await fetch(TOKEN_URL, {
+async function exchangeCode(
+	code: string,
+	verifier: string,
+): Promise<CodexTokens | null> {
+	const res = await requestUrl({
+		url: TOKEN_URL,
 		method: "POST",
 		headers: { "Content-Type": "application/x-www-form-urlencoded" },
 		body: new URLSearchParams({
@@ -67,12 +74,13 @@ async function exchangeCode(code: string, verifier: string): Promise<CodexTokens
 			code,
 			code_verifier: verifier,
 			redirect_uri: REDIRECT_URI,
-		}),
+		}).toString(),
+		throw: false,
 	});
 
-	if (!res.ok) return null;
+	if (res.status < 200 || res.status >= 300) return null;
 
-	const json = await res.json() as any;
+	const json = res.json as any;
 	if (!json.access_token || !json.refresh_token) return null;
 
 	const accountId = extractAccountId(json.access_token);
@@ -86,20 +94,24 @@ async function exchangeCode(code: string, verifier: string): Promise<CodexTokens
 	};
 }
 
-export async function refreshCodexToken(tokens: CodexTokens): Promise<CodexTokens | null> {
-	const res = await fetch(TOKEN_URL, {
+export async function refreshCodexToken(
+	tokens: CodexTokens,
+): Promise<CodexTokens | null> {
+	const res = await requestUrl({
+		url: TOKEN_URL,
 		method: "POST",
 		headers: { "Content-Type": "application/x-www-form-urlencoded" },
 		body: new URLSearchParams({
 			grant_type: "refresh_token",
 			refresh_token: tokens.refresh,
 			client_id: CLIENT_ID,
-		}),
+		}).toString(),
+		throw: false,
 	});
 
-	if (!res.ok) return null;
+	if (res.status < 200 || res.status >= 300) return null;
 
-	const json = await res.json() as any;
+	const json = res.json as any;
 	if (!json.access_token || !json.refresh_token) return null;
 
 	return {
@@ -117,13 +129,39 @@ export async function getValidCodexToken(
 	if (tokens.expires > Date.now() + 60_000) return tokens.access;
 
 	const refreshed = await refreshCodexToken(tokens);
-	if (!refreshed) return null;
+	if (!refreshed) {
+		new Notice(
+			"⚠️ Codex: session expired — open Settings → InlineAI to sign in again",
+			10000,
+		);
+		return null;
+	}
 
 	await onRefresh(refreshed);
 	return refreshed.access;
 }
 
+function isPortInUse(port: number): Promise<boolean> {
+	return new Promise((resolve) => {
+		const tester = http.createServer();
+		tester.once("error", () => resolve(true));
+		tester.once("listening", () => {
+			tester.close();
+			resolve(false);
+		});
+		tester.listen(port, "127.0.0.1");
+	});
+}
+
 export async function startCodexOAuthFlow(): Promise<CodexTokens | null> {
+	if (await isPortInUse(CALLBACK_PORT)) {
+		new Notice(
+			"❌ Codex: port 1455 is already in use — close the Codex CLI or any other app using it, then try again",
+			8000,
+		);
+		return null;
+	}
+
 	const { verifier, challenge } = await generatePKCE();
 	const state = randomState();
 
@@ -169,7 +207,9 @@ export async function startCodexOAuthFlow(): Promise<CodexTokens | null> {
 			}
 
 			res.writeHead(200, { "Content-Type": "text/html" });
-			res.end("<html><body><h2>Signed in! You can close this tab.</h2></body></html>");
+			res.end(
+				"<html><body><h2>Signed in! You can close this tab.</h2></body></html>",
+			);
 
 			const tokens = await exchangeCode(code, verifier);
 			if (!tokens) {
@@ -180,22 +220,29 @@ export async function startCodexOAuthFlow(): Promise<CodexTokens | null> {
 
 		server.on("error", (e: any) => {
 			if (e.code === "EADDRINUSE") {
-				new Notice("❌ Codex: port 1455 in use — close other Codex sessions first");
+				new Notice(
+					"❌ Codex: port 1455 in use — close other Codex sessions first",
+				);
 			}
 			done(null);
 		});
 
 		server.listen(CALLBACK_PORT, "127.0.0.1", () => {
 			window.open(url.toString());
-			new Notice("🔐 Codex: browser opened — complete sign-in to continue");
+			new Notice(
+				"🔐 Codex: browser opened — complete sign-in to continue",
+			);
 		});
 
 		// Timeout after 5 minutes
-		setTimeout(() => {
-			if (!resolved) {
-				new Notice("⚠️ Codex: sign-in timed out");
-				done(null);
-			}
-		}, 5 * 60 * 1000);
+		setTimeout(
+			() => {
+				if (!resolved) {
+					new Notice("⚠️ Codex: sign-in timed out");
+					done(null);
+				}
+			},
+			5 * 60 * 1000,
+		);
 	});
 }

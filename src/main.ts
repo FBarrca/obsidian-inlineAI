@@ -79,7 +79,7 @@ export default class InlineAIChatPlugin extends Plugin {
 					cmEditor.dispatch({ effects });
 				}
 			},
-			hotkeys: [],
+			hotkeys: [{ modifiers: ["Ctrl", "Shift"], key: " " }],
 		});
 		this.addCommand({
 			id: "accept-tooltip",

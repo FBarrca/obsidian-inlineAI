@@ -1,7 +1,7 @@
 import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import MyPlugin from "./main";
 import { cursorPrompt, selectionPrompt } from "./default_prompts";
-import { SlashCommand } from "./modules/commands/source";
+import { SlashCommand, BUILT_IN_COMMANDS } from "./modules/commands/source";
 import { startCodexOAuthFlow } from "./codex-auth";
 
 // Interface for the settings
@@ -73,6 +73,15 @@ export class InlineAISettingsTab extends PluginSettingTab {
 					.addOption("codex", "Codex (ChatGPT subscription)")
 					.setValue(this.plugin.settings.provider)
 					.onChange(async (value) => {
+						const CODEX_MODEL_IDS = [
+							"gpt-5.5",
+							"gpt-5.4-mini",
+							"gpt-5.3-codex-spark",
+							"gpt-5.2-codex",
+							"gpt-5.1-codex",
+							"gpt-5.1-codex-max",
+							"codex-mini-latest",
+						];
 						this.plugin.settings.provider = value as
 							| "openai"
 							| "ollama"
@@ -80,6 +89,15 @@ export class InlineAISettingsTab extends PluginSettingTab {
 							| "custom"
 							| "gemini"
 							| "codex";
+						// Reset model to a sane default when switching to Codex
+						if (
+							value === "codex" &&
+							!CODEX_MODEL_IDS.includes(
+								this.plugin.settings.model,
+							)
+						) {
+							this.plugin.settings.model = "gpt-5.4-mini";
+						}
 						await this.saveSettings();
 						this.display();
 					}),
@@ -100,7 +118,9 @@ export class InlineAISettingsTab extends PluginSettingTab {
 						: "Not signed in — click to authenticate with your ChatGPT Plus/Pro subscription.",
 				)
 				.addButton((btn) => {
-					btn.setButtonText(isSignedIn ? "Sign out" : "Sign in with ChatGPT")
+					btn.setButtonText(
+						isSignedIn ? "Sign out" : "Sign in with ChatGPT",
+					)
 						.setCta()
 						.onClick(async () => {
 							if (isSignedIn) {
@@ -111,34 +131,152 @@ export class InlineAISettingsTab extends PluginSettingTab {
 								await this.saveSettings();
 								this.display();
 							} else {
-								new Notice("Opening browser for ChatGPT sign-in…");
+								new Notice(
+									"Opening browser for ChatGPT sign-in…",
+								);
 								const tokens = await startCodexOAuthFlow();
 								if (tokens) {
-									this.plugin.settings.codexAccess = tokens.access;
-									this.plugin.settings.codexRefresh = tokens.refresh;
-									this.plugin.settings.codexExpires = tokens.expires;
-									this.plugin.settings.codexAccountId = tokens.accountId;
+									this.plugin.settings.codexAccess =
+										tokens.access;
+									this.plugin.settings.codexRefresh =
+										tokens.refresh;
+									this.plugin.settings.codexExpires =
+										tokens.expires;
+									this.plugin.settings.codexAccountId =
+										tokens.accountId;
 									await this.saveSettings();
-									new Notice("✅ Codex: signed in successfully");
+									new Notice(
+										"✅ Codex: signed in successfully",
+									);
 									this.display();
 								}
 							}
 						});
 				});
+
+			if (isSignedIn) {
+				containerEl.createEl("p", {
+					text: "⚠️ Auth tokens are stored in plaintext in your vault's data.json. Do not commit or share this file.",
+					cls: "setting-item-description",
+				});
+			}
 		}
 
 		// Model setting
-		new Setting(containerEl)
-			.setName("Model")
-			.setDesc("Specify the model to use.")
-			.addText((text) => {
-				text.setPlaceholder("e.g., gpt-4o-mini")
-					.setValue(this.plugin.settings.model)
-					.inputEl.addEventListener("blur", async () => {
-						this.plugin.settings.model = text.getValue();
+		if (this.plugin.settings.provider === "codex") {
+			const CODEX_MODELS: {
+				value: string;
+				label: string;
+				desc: string;
+			}[] = [
+				{
+					value: "gpt-5.5",
+					label: "GPT-5.5",
+					desc: "Most capable — best for complex rewrites and reasoning",
+				},
+				{
+					value: "gpt-5.4-mini",
+					label: "GPT-5.4 mini ✦ recommended",
+					desc: "Fast and cost-efficient — ideal for inline edits",
+				},
+				{
+					value: "gpt-5.3-codex-spark",
+					label: "GPT-5.3 Codex Spark (Pro only)",
+					desc: "Near-instant iteration — requires ChatGPT Pro",
+				},
+				{
+					value: "gpt-5.2-codex",
+					label: "GPT-5.2 Codex",
+					desc: "Strong coding and structured writing",
+				},
+				{
+					value: "gpt-5.1-codex",
+					label: "GPT-5.1 Codex",
+					desc: "Balanced coding model",
+				},
+				{
+					value: "gpt-5.1-codex-max",
+					label: "GPT-5.1 Codex Max",
+					desc: "High-effort variant of GPT-5.1 Codex",
+				},
+				{
+					value: "codex-mini-latest",
+					label: "Codex Mini",
+					desc: "Lightest and fastest option",
+				},
+				{
+					value: "custom",
+					label: "Custom…",
+					desc: "Enter a model ID manually",
+				},
+			];
+			const isCustom = !CODEX_MODELS.some(
+				(m) =>
+					m.value === this.plugin.settings.model &&
+					m.value !== "custom",
+			);
+			const dropdownValue = isCustom
+				? "custom"
+				: this.plugin.settings.model;
+			const selectedModel = CODEX_MODELS.find(
+				(m) => m.value === dropdownValue,
+			);
+
+			new Setting(containerEl)
+				.setName("Model")
+				.setDesc(
+					selectedModel?.desc ??
+						"Select the model to use for Codex requests.",
+				)
+				.addDropdown((dd) => {
+					CODEX_MODELS.forEach((m) => dd.addOption(m.value, m.label));
+					dd.setValue(dropdownValue).onChange(async (value) => {
+						this.plugin.settings.model =
+							value === "custom" ? "" : value;
 						await this.saveSettings();
+						this.display();
 					});
-			});
+				});
+
+			if (isCustom || dropdownValue === "custom") {
+				new Setting(containerEl)
+					.setName("Custom model ID")
+					.setDesc(
+						"Enter the exact model ID as used by the Codex API.",
+					)
+					.addText((text) => {
+						text.setPlaceholder("e.g., gpt-5.1-codex")
+							.setValue(
+								isCustom ? this.plugin.settings.model : "",
+							)
+							.inputEl.addEventListener("blur", async () => {
+								this.plugin.settings.model = text
+									.getValue()
+									.trim();
+								await this.saveSettings();
+								this.display();
+							});
+					});
+				if (!this.plugin.settings.model.trim()) {
+					containerEl.createEl("p", {
+						text: "⚠️ No model ID entered — requests will fail until you set one.",
+						cls: "setting-item-description",
+					});
+				}
+			}
+		} else {
+			new Setting(containerEl)
+				.setName("Model")
+				.setDesc("Specify the model to use.")
+				.addText((text) => {
+					text.setPlaceholder("e.g., gpt-4o-mini")
+						.setValue(this.plugin.settings.model)
+						.inputEl.addEventListener("blur", async () => {
+							this.plugin.settings.model = text.getValue();
+							await this.saveSettings();
+						});
+				});
+		}
 
 		// API Key setting (conditionally displayed for OpenAI-supported endpoints)
 		if (
@@ -275,6 +413,10 @@ export class InlineAISettingsTab extends PluginSettingTab {
 		containerEl.createEl("h3", { text: "Custom Commands" });
 		containerEl.createEl("p", {
 			text: "Add your own custom commands. Triggered with the prefix defined in the Command Prefix setting.",
+		});
+		containerEl.createEl("p", {
+			text: `Built-in: ${BUILT_IN_COMMANDS.map((c) => this.plugin.settings.commandPrefix + c.keyword).join("  •  ")}`,
+			cls: "setting-item-description",
 		});
 
 		// Command Prefix setting
