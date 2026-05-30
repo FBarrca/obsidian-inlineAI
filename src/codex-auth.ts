@@ -1,5 +1,5 @@
 import * as http from "http";
-import { Notice, Platform, requestUrl } from "obsidian";
+import { App, Notice, Platform, requestUrl } from "obsidian";
 
 const CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann";
 const AUTHORIZE_URL = "https://auth.openai.com/oauth/authorize";
@@ -89,6 +89,32 @@ function randomState(): string {
 	const array = new Uint8Array(16);
 	crypto.getRandomValues(array);
 	return Array.from(array, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+export async function copyToClipboard(text: string): Promise<boolean> {
+	try {
+		if (navigator.clipboard?.writeText) {
+			await navigator.clipboard.writeText(text);
+			return true;
+		}
+	} catch {
+		// fall through to legacy fallback
+	}
+
+	try {
+		const textarea = document.createElement("textarea");
+		textarea.value = text;
+		textarea.setAttribute("readonly", "");
+		textarea.style.position = "fixed";
+		textarea.style.left = "-9999px";
+		document.body.appendChild(textarea);
+		textarea.select();
+		const copied = document.execCommand("copy");
+		textarea.remove();
+		return copied;
+	} catch {
+		return false;
+	}
 }
 
 function sleep(ms: number): Promise<void> {
@@ -206,7 +232,7 @@ function isPortInUse(port: number): Promise<boolean> {
 	});
 }
 
-async function startCodexDeviceAuthFlow(): Promise<CodexTokens | null> {
+async function startCodexDeviceAuthFlow(app: App): Promise<CodexTokens | null> {
 	const userCodeRes = await requestUrl({
 		url: DEVICE_USERCODE_URL,
 		method: "POST",
@@ -242,64 +268,76 @@ async function startCodexDeviceAuthFlow(): Promise<CodexTokens | null> {
 		return null;
 	}
 
-	openExternalUrl(DEVICE_VERIFICATION_URL);
-	new Notice(
-		`🔐 Codex: enter code ${userCode} in your browser, then return here`,
-		15000,
+	let cancelled = false;
+	const { CodexDeviceAuthModal } = await import("./codex-device-auth-modal");
+	const modal = new CodexDeviceAuthModal(
+		app,
+		userCode,
+		DEVICE_VERIFICATION_URL,
+		() => {
+			cancelled = true;
+		},
 	);
+	modal.open();
 
-	const startedAt = Date.now();
-	const pollIntervalMs = intervalSec * 1000 + DEVICE_POLL_SAFETY_MARGIN_MS;
+	try {
+		const startedAt = Date.now();
+		const pollIntervalMs = intervalSec * 1000 + DEVICE_POLL_SAFETY_MARGIN_MS;
 
-	while (Date.now() - startedAt < DEVICE_AUTH_TIMEOUT_MS) {
-		const pollRes = await requestUrl({
-			url: DEVICE_TOKEN_URL,
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				device_auth_id: deviceAuthId,
-				user_code: userCode,
-			}),
-			throw: false,
-		});
+		while (!cancelled && Date.now() - startedAt < DEVICE_AUTH_TIMEOUT_MS) {
+			const pollRes = await requestUrl({
+				url: DEVICE_TOKEN_URL,
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					device_auth_id: deviceAuthId,
+					user_code: userCode,
+				}),
+				throw: false,
+			});
 
-		if (pollRes.status >= 200 && pollRes.status < 300) {
-			const pollJson = pollRes.json as Record<string, unknown>;
-			const authCode =
-				typeof pollJson.authorization_code === "string"
-					? pollJson.authorization_code
-					: null;
-			const codeVerifier =
-				typeof pollJson.code_verifier === "string"
-					? pollJson.code_verifier
-					: null;
+			if (pollRes.status >= 200 && pollRes.status < 300) {
+				const pollJson = pollRes.json as Record<string, unknown>;
+				const authCode =
+					typeof pollJson.authorization_code === "string"
+						? pollJson.authorization_code
+						: null;
+				const codeVerifier =
+					typeof pollJson.code_verifier === "string"
+						? pollJson.code_verifier
+						: null;
 
-			if (!authCode || !codeVerifier) {
-				new Notice("❌ Codex: invalid device sign-in response");
+				if (!authCode || !codeVerifier) {
+					new Notice("❌ Codex: invalid device sign-in response");
+					return null;
+				}
+
+				const tokens = await exchangeAuthorizationCode(
+					authCode,
+					codeVerifier,
+					DEVICE_REDIRECT_URI,
+				);
+				if (!tokens) {
+					new Notice("❌ Codex: failed to exchange auth code for tokens");
+				}
+				return tokens;
+			}
+
+			if (pollRes.status !== 403 && pollRes.status !== 404) {
+				new Notice("❌ Codex: device sign-in failed");
 				return null;
 			}
 
-			const tokens = await exchangeAuthorizationCode(
-				authCode,
-				codeVerifier,
-				DEVICE_REDIRECT_URI,
-			);
-			if (!tokens) {
-				new Notice("❌ Codex: failed to exchange auth code for tokens");
-			}
-			return tokens;
+			await sleep(pollIntervalMs);
 		}
 
-		if (pollRes.status !== 403 && pollRes.status !== 404) {
-			new Notice("❌ Codex: device sign-in failed");
-			return null;
+		if (!cancelled) {
+			new Notice("⚠️ Codex: sign-in timed out");
 		}
-
-		await sleep(pollIntervalMs);
+		return null;
+	} finally {
+		modal.closeByApp();
 	}
-
-	new Notice("⚠️ Codex: sign-in timed out");
-	return null;
 }
 
 async function startCodexDesktopOAuthFlow(): Promise<CodexTokens | null> {
@@ -399,9 +437,9 @@ async function startCodexDesktopOAuthFlow(): Promise<CodexTokens | null> {
 	});
 }
 
-export async function startCodexOAuthFlow(): Promise<CodexTokens | null> {
+export async function startCodexOAuthFlow(app: App): Promise<CodexTokens | null> {
 	if (Platform.isMobileApp) {
-		return startCodexDeviceAuthFlow();
+		return startCodexDeviceAuthFlow(app);
 	}
 	return startCodexDesktopOAuthFlow();
 }

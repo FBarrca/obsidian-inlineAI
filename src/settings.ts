@@ -143,10 +143,10 @@ export class InlineAISettingsTab extends PluginSettingTab {
 								}
 								new Notice(
 									Platform.isMobileApp
-										? "Starting device sign-in — your browser will open shortly…"
+										? "Complete sign-in using the dialog that opens"
 										: "Opening browser for ChatGPT sign-in…",
 								);
-								const tokens = await startCodexOAuthFlow();
+								const tokens = await startCodexOAuthFlow(this.app);
 								if (tokens) {
 									setCodexTokens(this.app, tokens);
 									new Notice(
