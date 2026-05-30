@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, Notice } from "obsidian";
+import { App, PluginSettingTab, Setting, Notice, Platform } from "obsidian";
 import MyPlugin from "./main";
 import { cursorPrompt, selectionPrompt } from "./default_prompts";
 import { SlashCommand, BUILT_IN_COMMANDS } from "./modules/commands/source";
@@ -142,7 +142,9 @@ export class InlineAISettingsTab extends PluginSettingTab {
 									return;
 								}
 								new Notice(
-									"Opening browser for ChatGPT sign-in…",
+									Platform.isMobileApp
+										? "Starting device sign-in — your browser will open shortly…"
+										: "Opening browser for ChatGPT sign-in…",
 								);
 								const tokens = await startCodexOAuthFlow();
 								if (tokens) {

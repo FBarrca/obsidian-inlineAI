@@ -1,18 +1,66 @@
 import * as http from "http";
-import { Notice, requestUrl } from "obsidian";
+import { Notice, Platform, requestUrl } from "obsidian";
 
 const CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann";
 const AUTHORIZE_URL = "https://auth.openai.com/oauth/authorize";
 const TOKEN_URL = "https://auth.openai.com/oauth/token";
 const REDIRECT_URI = "http://localhost:1455/auth/callback";
+const DEVICE_USERCODE_URL =
+	"https://auth.openai.com/api/accounts/deviceauth/usercode";
+const DEVICE_TOKEN_URL =
+	"https://auth.openai.com/api/accounts/deviceauth/token";
+const DEVICE_VERIFICATION_URL = "https://auth.openai.com/codex/device";
+const DEVICE_REDIRECT_URI = "https://auth.openai.com/deviceauth/callback";
 const SCOPE = "openid profile email offline_access";
 const CALLBACK_PORT = 1455;
+const DEVICE_AUTH_TIMEOUT_MS = 15 * 60 * 1000;
+const DEVICE_POLL_SAFETY_MARGIN_MS = 3000;
 
 export interface CodexTokens {
 	access: string;
 	refresh: string;
 	expires: number;
 	accountId: string;
+}
+
+/** Open a URL in the system browser (works on Android/iOS where window.open often fails). */
+export function openExternalUrl(url: string): void {
+	if (Platform.isMobileApp) {
+		const plugins = (
+			window as unknown as {
+				Capacitor?: { Plugins?: Record<string, unknown> };
+			}
+		).Capacitor?.Plugins as
+			| {
+					AppLauncher?: {
+						openUrl: (opts: { url: string }) => Promise<unknown>;
+					};
+					Browser?: {
+						open: (opts: { url: string }) => Promise<unknown>;
+					};
+			  }
+			| undefined;
+
+		if (plugins?.AppLauncher?.openUrl) {
+			void plugins.AppLauncher.openUrl({ url });
+			return;
+		}
+		if (plugins?.Browser?.open) {
+			void plugins.Browser.open({ url });
+			return;
+		}
+
+		const link = document.createElement("a");
+		link.href = url;
+		link.target = "_blank";
+		link.rel = "noopener noreferrer";
+		document.body.appendChild(link);
+		link.click();
+		link.remove();
+		return;
+	}
+
+	window.open(url);
 }
 
 async function generatePKCE(): Promise<{
@@ -43,6 +91,10 @@ function randomState(): string {
 	return Array.from(array, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+function sleep(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function decodeJWT(token: string): Record<string, any> | null {
 	try {
 		const parts = token.split(".");
@@ -60,9 +112,10 @@ function extractAccountId(accessToken: string): string | null {
 	return auth?.user_id ?? auth?.account_id ?? null;
 }
 
-async function exchangeCode(
+async function exchangeAuthorizationCode(
 	code: string,
 	verifier: string,
+	redirectUri: string,
 ): Promise<CodexTokens | null> {
 	const res = await requestUrl({
 		url: TOKEN_URL,
@@ -73,7 +126,7 @@ async function exchangeCode(
 			client_id: CLIENT_ID,
 			code,
 			code_verifier: verifier,
-			redirect_uri: REDIRECT_URI,
+			redirect_uri: redirectUri,
 		}).toString(),
 		throw: false,
 	});
@@ -153,7 +206,103 @@ function isPortInUse(port: number): Promise<boolean> {
 	});
 }
 
-export async function startCodexOAuthFlow(): Promise<CodexTokens | null> {
+async function startCodexDeviceAuthFlow(): Promise<CodexTokens | null> {
+	const userCodeRes = await requestUrl({
+		url: DEVICE_USERCODE_URL,
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ client_id: CLIENT_ID }),
+		throw: false,
+	});
+
+	if (userCodeRes.status < 200 || userCodeRes.status >= 300) {
+		new Notice(
+			"❌ Codex: device sign-in unavailable — try again later",
+			8000,
+		);
+		return null;
+	}
+
+	const json = userCodeRes.json as Record<string, unknown>;
+	const deviceAuthId =
+		typeof json.device_auth_id === "string" ? json.device_auth_id : null;
+	const userCode =
+		typeof json.user_code === "string"
+			? json.user_code
+			: typeof json.usercode === "string"
+				? json.usercode
+				: null;
+	const intervalSec = Math.max(
+		parseInt(String(json.interval ?? "5"), 10) || 5,
+		1,
+	);
+
+	if (!deviceAuthId || !userCode) {
+		new Notice("❌ Codex: invalid device sign-in response");
+		return null;
+	}
+
+	openExternalUrl(DEVICE_VERIFICATION_URL);
+	new Notice(
+		`🔐 Codex: enter code ${userCode} in your browser, then return here`,
+		15000,
+	);
+
+	const startedAt = Date.now();
+	const pollIntervalMs = intervalSec * 1000 + DEVICE_POLL_SAFETY_MARGIN_MS;
+
+	while (Date.now() - startedAt < DEVICE_AUTH_TIMEOUT_MS) {
+		const pollRes = await requestUrl({
+			url: DEVICE_TOKEN_URL,
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				device_auth_id: deviceAuthId,
+				user_code: userCode,
+			}),
+			throw: false,
+		});
+
+		if (pollRes.status >= 200 && pollRes.status < 300) {
+			const pollJson = pollRes.json as Record<string, unknown>;
+			const authCode =
+				typeof pollJson.authorization_code === "string"
+					? pollJson.authorization_code
+					: null;
+			const codeVerifier =
+				typeof pollJson.code_verifier === "string"
+					? pollJson.code_verifier
+					: null;
+
+			if (!authCode || !codeVerifier) {
+				new Notice("❌ Codex: invalid device sign-in response");
+				return null;
+			}
+
+			const tokens = await exchangeAuthorizationCode(
+				authCode,
+				codeVerifier,
+				DEVICE_REDIRECT_URI,
+			);
+			if (!tokens) {
+				new Notice("❌ Codex: failed to exchange auth code for tokens");
+			}
+			return tokens;
+		}
+
+		if (pollRes.status !== 403 && pollRes.status !== 404) {
+			new Notice("❌ Codex: device sign-in failed");
+			return null;
+		}
+
+		await sleep(pollIntervalMs);
+	}
+
+	new Notice("⚠️ Codex: sign-in timed out");
+	return null;
+}
+
+async function startCodexDesktopOAuthFlow(): Promise<CodexTokens | null> {
 	if (await isPortInUse(CALLBACK_PORT)) {
 		new Notice(
 			"❌ Codex: port 1455 is already in use — close the Codex CLI or any other app using it, then try again",
@@ -211,7 +360,11 @@ export async function startCodexOAuthFlow(): Promise<CodexTokens | null> {
 				"<html><body><h2>Signed in! You can close this tab.</h2></body></html>",
 			);
 
-			const tokens = await exchangeCode(code, verifier);
+			const tokens = await exchangeAuthorizationCode(
+				code,
+				verifier,
+				REDIRECT_URI,
+			);
 			if (!tokens) {
 				new Notice("❌ Codex: failed to exchange auth code for tokens");
 			}
@@ -228,13 +381,12 @@ export async function startCodexOAuthFlow(): Promise<CodexTokens | null> {
 		});
 
 		server.listen(CALLBACK_PORT, "127.0.0.1", () => {
-			window.open(url.toString());
+			openExternalUrl(url.toString());
 			new Notice(
 				"🔐 Codex: browser opened — complete sign-in to continue",
 			);
 		});
 
-		// Timeout after 5 minutes
 		setTimeout(
 			() => {
 				if (!resolved) {
@@ -245,4 +397,11 @@ export async function startCodexOAuthFlow(): Promise<CodexTokens | null> {
 			5 * 60 * 1000,
 		);
 	});
+}
+
+export async function startCodexOAuthFlow(): Promise<CodexTokens | null> {
+	if (Platform.isMobileApp) {
+		return startCodexDeviceAuthFlow();
+	}
+	return startCodexDesktopOAuthFlow();
 }
