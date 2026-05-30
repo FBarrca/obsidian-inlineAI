@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-inlineai",
-	"version": "1.2.4",
+	"version": "1.2.5",
 	"description": "Cursor or Copilot like Inline AI interface for Obsidian",
 	"main": "main.js",
 	"scripts": {
