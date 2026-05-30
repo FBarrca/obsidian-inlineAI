@@ -3,12 +3,19 @@ import MyPlugin from "./main";
 import { cursorPrompt, selectionPrompt } from "./default_prompts";
 import { SlashCommand, BUILT_IN_COMMANDS } from "./modules/commands/source";
 import { startCodexOAuthFlow } from "./codex-auth";
+import {
+	clearCodexTokens,
+	getApiKey,
+	getCodexTokens,
+	isSecretStorageAvailable,
+	setApiKey,
+	setCodexTokens,
+} from "./credentials";
 
 // Interface for the settings
 export interface InlineAISettings {
 	provider: "openai" | "ollama" | "custom" | "gemini" | "azure" | "codex";
 	model: string;
-	apiKey?: string;
 	customURL?: string;
 	azureEndpoint?: string;
 	azureApiVersion?: string;
@@ -17,18 +24,12 @@ export interface InlineAISettings {
 	customCommands: SlashCommand[];
 	commandPrefix: string;
 	messageHistory: boolean;
-	// Codex subscription OAuth tokens
-	codexAccess?: string;
-	codexRefresh?: string;
-	codexExpires?: number;
-	codexAccountId?: string;
 }
 
 // Default settings values
 export const DEFAULT_SETTINGS: InlineAISettings = {
 	provider: "ollama",
 	model: "llama3.2",
-	apiKey: "",
 	customURL: "",
 	azureEndpoint: "",
 	azureApiVersion: "2024-02-15-preview",
@@ -56,6 +57,13 @@ export class InlineAISettingsTab extends PluginSettingTab {
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
+
+		if (!isSecretStorageAvailable(this.app)) {
+			containerEl.createEl("p", {
+				text: "⚠️ InlineAI requires Obsidian 1.11.4 or later for secure credential storage. Please update Obsidian to use API keys and Codex sign-in.",
+				cls: "setting-item-description",
+			});
+		}
 
 		// Provider setting
 		new Setting(containerEl)
@@ -105,16 +113,16 @@ export class InlineAISettingsTab extends PluginSettingTab {
 
 		// Codex subscription auth section
 		if (this.plugin.settings.provider === "codex") {
+			const codexTokens = getCodexTokens(this.app);
 			const isSignedIn = !!(
-				this.plugin.settings.codexAccess &&
-				this.plugin.settings.codexAccountId
+				codexTokens?.access && codexTokens?.accountId
 			);
 
 			new Setting(containerEl)
 				.setName("ChatGPT account")
 				.setDesc(
 					isSignedIn
-						? `Signed in (account: ${this.plugin.settings.codexAccountId})`
+						? `Signed in (account: ${codexTokens!.accountId})`
 						: "Not signed in — click to authenticate with your ChatGPT Plus/Pro subscription.",
 				)
 				.addButton((btn) => {
@@ -124,27 +132,21 @@ export class InlineAISettingsTab extends PluginSettingTab {
 						.setCta()
 						.onClick(async () => {
 							if (isSignedIn) {
-								this.plugin.settings.codexAccess = undefined;
-								this.plugin.settings.codexRefresh = undefined;
-								this.plugin.settings.codexExpires = undefined;
-								this.plugin.settings.codexAccountId = undefined;
-								await this.saveSettings();
+								clearCodexTokens(this.app);
 								this.display();
 							} else {
+								if (!isSecretStorageAvailable(this.app)) {
+									new Notice(
+										"⚠️ InlineAI requires Obsidian 1.11.4+ for Codex sign-in.",
+									);
+									return;
+								}
 								new Notice(
 									"Opening browser for ChatGPT sign-in…",
 								);
 								const tokens = await startCodexOAuthFlow();
 								if (tokens) {
-									this.plugin.settings.codexAccess =
-										tokens.access;
-									this.plugin.settings.codexRefresh =
-										tokens.refresh;
-									this.plugin.settings.codexExpires =
-										tokens.expires;
-									this.plugin.settings.codexAccountId =
-										tokens.accountId;
-									await this.saveSettings();
+									setCodexTokens(this.app, tokens);
 									new Notice(
 										"✅ Codex: signed in successfully",
 									);
@@ -156,7 +158,7 @@ export class InlineAISettingsTab extends PluginSettingTab {
 
 			if (isSignedIn) {
 				containerEl.createEl("p", {
-					text: "⚠️ Auth tokens are stored in plaintext in your vault's data.json. Do not commit or share this file.",
+					text: "Credentials are stored in Obsidian's keychain (Settings → Security). They are not synced with your vault and must be set up on each device.",
 					cls: "setting-item-description",
 				});
 			}
@@ -290,10 +292,18 @@ export class InlineAISettingsTab extends PluginSettingTab {
 				.setDesc("Enter your API key.")
 				.addText((text) => {
 					text.setPlaceholder("sk-...")
-						.setValue(this.plugin.settings.apiKey || "")
+						.setValue(getApiKey(this.app) ?? "")
 						.inputEl.addEventListener("blur", async () => {
-							this.plugin.settings.apiKey = text.getValue();
-							await this.saveSettings();
+							if (!isSecretStorageAvailable(this.app)) {
+								new Notice(
+									"⚠️ InlineAI requires Obsidian 1.11.4+ to store API keys securely.",
+								);
+								return;
+							}
+							setApiKey(this.app, text.getValue());
+							this.plugin.chatapi.updateSettings(
+								this.plugin.settings,
+							);
 						});
 				});
 		}

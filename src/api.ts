@@ -11,7 +11,8 @@ import { InlineAISettings } from "./settings";
 import { App, MarkdownView, Notice } from "obsidian";
 import { EditorView } from "@codemirror/view";
 import { callCodexApi } from "./codex-client";
-import { getValidCodexToken, CodexTokens } from "./codex-auth";
+import { getValidCodexToken } from "./codex-auth";
+import { getApiKey, getCodexTokens, setCodexTokens } from "./credentials";
 import { setGeneratedResponseEffect } from "./modules/AIExtension";
 import { parseCommand } from "./modules/commands/parser";
 import { MessageQueue } from "./modules/messageHistory/queue";
@@ -99,8 +100,9 @@ export class ChatApiManager {
 			}
 
 			switch (settings.provider) {
-				case "openai":
-					if (!settings.apiKey) {
+				case "openai": {
+					const apiKey = getApiKey(this.app);
+					if (!apiKey) {
 						new Notice(
 							"⚠️ OpenAI API key is required. Please check your settings.",
 						);
@@ -109,20 +111,24 @@ export class ChatApiManager {
 					return new ChatOpenAI({
 						modelName: settings.model,
 						temperature: 0,
-						apiKey: settings.apiKey,
+						apiKey,
 					});
+				}
 
 				case "ollama":
 					return new ChatOllama({
 						model: settings.model,
 					});
-				case "gemini":
+				case "gemini": {
+					const apiKey = getApiKey(this.app);
 					return new ChatGoogleGenerativeAI({
 						model: settings.model,
-						apiKey: settings.apiKey,
+						apiKey: apiKey ?? undefined,
 					});
-				case "azure":
-					if (!settings.apiKey || !settings.azureEndpoint) {
+				}
+				case "azure": {
+					const apiKey = getApiKey(this.app);
+					if (!apiKey || !settings.azureEndpoint) {
 						new Notice(
 							"⚠️ API key and Azure endpoint are required for Azure provider.",
 						);
@@ -141,15 +147,17 @@ export class ChatApiManager {
 					}
 
 					return new AzureChatOpenAI({
-						azureOpenAIApiKey: settings.apiKey,
+						azureOpenAIApiKey: apiKey,
 						azureOpenAIApiInstanceName: instanceName,
 						azureOpenAIApiDeploymentName: settings.model,
 						azureOpenAIApiVersion:
 							settings.azureApiVersion || "2024-02-15-preview",
 						temperature: 0,
 					});
-				case "custom":
-					if (!settings.apiKey || !settings.customURL) {
+				}
+				case "custom": {
+					const apiKey = getApiKey(this.app);
+					if (!apiKey || !settings.customURL) {
 						new Notice(
 							"⚠️ API key and custom base URL are required for custom providers.",
 						);
@@ -158,12 +166,13 @@ export class ChatApiManager {
 					return new ChatOpenAI({
 						modelName: settings.model,
 						temperature: 0,
-						openAIApiKey: settings.apiKey,
+						openAIApiKey: apiKey,
 						// 'configuration.basePath' is the recognized property
 						configuration: {
 							baseURL: settings.customURL.trim(),
 						},
 					});
+				}
 
 				case "codex":
 					// Handled directly in callApi — no LangChain client needed
@@ -223,8 +232,8 @@ export class ChatApiManager {
 		systemMessage: string,
 		message: string,
 	): Promise<string> {
-		const s = this.settings;
-		if (!s.codexAccess || !s.codexRefresh || !s.codexAccountId) {
+		const tokens = getCodexTokens(this.app);
+		if (!tokens?.access || !tokens.refresh || !tokens.accountId) {
 			new Notice(
 				"⚠️ Codex: not signed in — open Settings → InlineAI and click 'Sign in with ChatGPT'",
 			);
@@ -232,19 +241,10 @@ export class ChatApiManager {
 		}
 
 		try {
-			const tokens: CodexTokens = {
-				access: s.codexAccess,
-				refresh: s.codexRefresh,
-				expires: s.codexExpires ?? 0,
-				accountId: s.codexAccountId,
-			};
-
 			const accessToken = await getValidCodexToken(
 				tokens,
 				async (refreshed) => {
-					this.settings.codexAccess = refreshed.access;
-					this.settings.codexRefresh = refreshed.refresh;
-					this.settings.codexExpires = refreshed.expires;
+					setCodexTokens(this.app, refreshed);
 				},
 			);
 
@@ -257,8 +257,8 @@ export class ChatApiManager {
 				systemMessage,
 				message,
 				accessToken,
-				s.codexAccountId,
-				s.model,
+				tokens.accountId,
+				this.settings.model,
 			);
 		} catch (error: any) {
 			console.error("Codex error:", error);

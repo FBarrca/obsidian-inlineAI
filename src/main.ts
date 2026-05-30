@@ -20,6 +20,7 @@ import {
 	setSelectionInfoEffect,
 } from "./modules/SelectionState";
 import { diffExtension } from "./modules/diffExtension";
+import { migrateLegacySecrets, LegacySecretFields } from "./credentials";
 
 export default class InlineAIChatPlugin extends Plugin {
 	settings: InlineAISettings = DEFAULT_SETTINGS;
@@ -137,11 +138,11 @@ export default class InlineAIChatPlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign(
-			{},
-			DEFAULT_SETTINGS,
-			await this.loadData(),
-		);
+		const raw: LegacySecretFields = (await this.loadData()) ?? {};
+		if (migrateLegacySecrets(this.app, raw)) {
+			await this.saveData(raw);
+		}
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, raw);
 	}
 
 	async saveSettings() {
