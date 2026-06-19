@@ -389,8 +389,12 @@ class FloatingWidget extends WidgetType {
 			return;
 		}
 
-		// Grab the selected text from the stored selection info
-		const selectedText = this.selectionInfo?.text ?? "";
+		// Grab the selected text from the stored selection info.
+		// If nothing was selected, use the entire document as context.
+		let selectedText = this.selectionInfo?.text ?? "";
+		if (!selectedText && this.outerEditorView) {
+			selectedText = this.outerEditorView.state.doc.toString();
+		}
 
 		// Show loader
 		this.toggleLoading(true);
